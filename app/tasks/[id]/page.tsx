@@ -1,0 +1,166 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import type { Task } from "@/types";
+
+export default function TaskDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const [task, setTask] = useState<Task | null>(null);
+  const [submission, setSubmission] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [evaluating, setEvaluating] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/tasks/${id}`)
+      .then((r) => r.json())
+      .then((data: Task) => {
+        setTask(data);
+        if (data.submission) setSubmission(data.submission);
+      })
+      .catch(() => setError("タスクの読み込みに失敗しました"))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  const handleSubmit = async () => {
+    if (!submission.trim() || submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submission }),
+      });
+      if (!res.ok) throw new Error("提出に失敗しました");
+      const updated = (await res.json()) as Task;
+      setTask(updated);
+
+      // 自動評価
+      setEvaluating(true);
+      const evalRes = await fetch("/api/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId: id }),
+      });
+      if (!evalRes.ok) throw new Error("評価に失敗しました");
+      const evalData = (await evalRes.json()) as Task["evaluation"];
+      setTask((prev) => prev ? { ...prev, status: "evaluated", evaluation: evalData } : prev);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "エラーが発生しました");
+    } finally {
+      setSubmitting(false);
+      setEvaluating(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-gray-400">読み込み中...</p>
+      </div>
+    );
+  }
+
+  if (!task) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <p className="text-red-500">{error || "タスクが見つかりません"}</p>
+      </div>
+    );
+  }
+
+  const isEvaluated = task.status === "evaluated";
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4">
+        <button
+          onClick={() => router.push("/tasks")}
+          className="text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          ← 戻る
+        </button>
+        <h1 className="text-lg font-semibold text-gray-900">タスク詳細</h1>
+      </header>
+
+      <main className="max-w-2xl mx-auto px-6 py-8 space-y-6">
+        {/* Task info */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900">{task.title}</h2>
+          <p className="text-sm text-gray-500 mt-3 leading-relaxed">{task.description}</p>
+        </div>
+
+        {/* Evaluation result */}
+        {isEvaluated && task.evaluation && (
+          <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200 p-6">
+            <h3 className="font-semibold text-indigo-900 mb-4">AI評価結果</h3>
+            <div className="flex items-center gap-6 mb-4">
+              <div className="text-center">
+                <p className="text-4xl font-bold text-indigo-600">{task.evaluation.score}</p>
+                <p className="text-xs text-indigo-400">/ 100点</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  スコア変動:{" "}
+                  <span className={task.evaluation.delta >= 0 ? "text-green-600" : "text-red-600"}>
+                    {task.evaluation.delta >= 0 ? "+" : ""}{task.evaluation.delta}pt
+                  </span>
+                </p>
+                <p className="text-sm font-medium text-gray-600">
+                  バッジレベル: <span className="text-indigo-600">{task.evaluation.level}</span>
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {([
+                { key: "requirement", label: "要件充足", max: 40 },
+                { key: "clarity", label: "明確性", max: 30 },
+                { key: "completeness", label: "完結性", max: 30 },
+              ] as const).map((item) => (
+                <div key={item.key} className="bg-white rounded-lg p-3 text-center border border-indigo-100">
+                  <p className="text-lg font-bold text-gray-900">
+                    {task.evaluation!.breakdown[item.key]}
+                    <span className="text-xs text-gray-400">/{item.max}</span>
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">{item.label}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed">{task.evaluation.feedback}</p>
+          </div>
+        )}
+
+        {/* Submission */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="font-semibold text-gray-900 mb-3">成果物の提出</h3>
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm mb-4">
+              {error}
+            </div>
+          )}
+          <textarea
+            value={submission}
+            onChange={(e) => setSubmission(e.target.value)}
+            disabled={isEvaluated || submitting || evaluating}
+            placeholder="成果物の内容をここに記入してください..."
+            rows={8}
+            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none disabled:bg-gray-50 disabled:text-gray-400"
+          />
+          {!isEvaluated && (
+            <button
+              onClick={handleSubmit}
+              disabled={!submission.trim() || submitting || evaluating}
+              className="mt-3 w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            >
+              {evaluating ? "AIが評価中..." : submitting ? "提出中..." : "提出してAI評価を受ける"}
+            </button>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}

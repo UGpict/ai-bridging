@@ -88,11 +88,20 @@ export default async function TasksPage() {
               <Link
                 key={task.id}
                 href={`/tasks/${task.id}`}
-                className="block bg-white rounded-xl border border-gray-200 p-5 hover:border-indigo-300 hover:shadow-sm transition-all"
+                className={`block bg-white rounded-xl border p-5 hover:shadow-sm transition-all ${
+                  task.deadline === "today"
+                    ? "border-red-300 hover:border-red-400"
+                    : "border-gray-200 hover:border-indigo-300"
+                }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900">{task.title}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {task.deadline === "today" && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">🔥 今日中</span>
+                      )}
+                      <p className="font-medium text-gray-900">{task.title}</p>
+                    </div>
                     <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
                   </div>
                   <StatusBadge status={task.status} />

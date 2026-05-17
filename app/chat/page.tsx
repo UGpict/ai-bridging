@@ -12,6 +12,7 @@ interface ChatMessage {
 }
 
 type Phase = "chatting" | "assigning" | "assigned";
+type Mode = "project" | "today";
 
 interface AssignResult {
   task: ClarifiedTask;
@@ -20,6 +21,7 @@ interface AssignResult {
 
 export default function ChatPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<Mode>("project");
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: "こんにちは。どのようなことをチームに依頼しますか？" },
   ]);
@@ -30,6 +32,23 @@ export default function ChatPage() {
   const [assignments, setAssignments] = useState<AssignResult[]>([]);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const handleModeChange = (newMode: Mode) => {
+    setMode(newMode);
+    setMessages([
+      {
+        role: "assistant",
+        content:
+          newMode === "today"
+            ? "今日中の緊急タスクを入力してください。すぐに分解・割り振りします。"
+            : "こんにちは。どのようなことをチームに依頼しますか？",
+      },
+    ]);
+    setSessionId(undefined);
+    setPhase("chatting");
+    setTasks([]);
+    setAssignments([]);
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -46,7 +65,7 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg, sessionId }),
+        body: JSON.stringify({ message: userMsg, sessionId, mode }),
       });
       const data = (await res.json()) as {
         status: string;
@@ -149,7 +168,35 @@ export default function ChatPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header pageTitle="指示入力チャット" backHref="/dashboard" />
 
-      <div className="flex flex-1 max-w-4xl mx-auto w-full px-4 py-6 gap-6">
+      {/* Mode toggle */}
+      <div className="max-w-4xl mx-auto w-full px-4 pt-4">
+        <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 gap-1">
+          <button
+            onClick={() => handleModeChange("project")}
+            disabled={phase !== "chatting"}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+              mode === "project"
+                ? "bg-indigo-600 text-white"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            プロジェクト
+          </button>
+          <button
+            onClick={() => handleModeChange("today")}
+            disabled={phase !== "chatting"}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+              mode === "today"
+                ? "bg-red-500 text-white"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            🔥 今日中
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-1 max-w-4xl mx-auto w-full px-4 py-4 gap-6">
         {/* Chat */}
         <div className="flex-1 flex flex-col">
           <div className="flex-1 overflow-y-auto space-y-4 mb-4">
@@ -205,7 +252,12 @@ export default function ChatPage() {
         {phase === "assigned" && (
           <div className="w-72 flex-shrink-0">
             <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <h2 className="font-semibold text-gray-900 mb-4">AI推薦の割り振り案</h2>
+              <div className="flex items-center gap-2 mb-4">
+                <h2 className="font-semibold text-gray-900">AI推薦の割り振り案</h2>
+                {mode === "today" && (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">今日中</span>
+                )}
+              </div>
               <div className="space-y-4">
                 {assignments.map((a, i) => (
                   <div key={i} className="border border-gray-100 rounded-lg p-3">

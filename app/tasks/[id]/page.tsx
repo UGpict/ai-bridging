@@ -116,9 +116,14 @@ export default function TaskDetailPage() {
 
       <main className="max-w-2xl mx-auto px-6 py-8 space-y-6">
         {/* Task info */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900">{task.title}</h2>
-          <p className="text-sm text-gray-500 mt-3 leading-relaxed">{task.description}</p>
+        <div className={`bg-white rounded-xl border p-6 ${task.deadline === "today" ? "border-red-300" : "border-gray-200"}`}>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            {task.deadline === "today" && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">🔥 今日中</span>
+            )}
+            <h2 className="text-lg font-semibold text-gray-900">{task.title}</h2>
+          </div>
+          <p className="text-sm text-gray-500 mt-2 leading-relaxed">{task.description}</p>
         </div>
 
         {/* Evaluation result */}

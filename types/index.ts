@@ -5,6 +5,7 @@ export type UserRole = "manager" | "member";
 export type TaskStatus = "pending" | "submitted" | "evaluated";
 export type RequiredSkill = "documentation" | "communication" | "technical";
 export type SessionStatus = "chatting" | "proposed" | "approved";
+export type TaskDeadline = "today" | "project";
 
 export interface Organization {
   id: string;
@@ -34,6 +35,7 @@ export interface Task {
   title: string;
   description: string;
   requiredSkill?: RequiredSkill;
+  deadline?: TaskDeadline;
   assigneeUid: string;
   assigneeName: string;
   status: TaskStatus;
@@ -56,6 +58,7 @@ export interface ClarifiedTask {
   title: string;
   description: string;
   requiredSkill: RequiredSkill;
+  deadline?: TaskDeadline;
 }
 
 export interface Assignment {

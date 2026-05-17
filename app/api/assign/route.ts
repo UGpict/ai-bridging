@@ -104,6 +104,7 @@ export async function PUT(request: Request) {
         title: task.title,
         description: task.description,
         requiredSkill: task.requiredSkill,
+        deadline: task.deadline,
         assigneeUid: assignment.assigneeUid,
         assigneeName: assignment.assigneeName,
         status: "pending",

@@ -69,7 +69,7 @@ ${membersJson}
     return Response.json({ assignments });
   } catch (error) {
     return Response.json(
-      { error: error instanceof Error ? error.message : "エラーが発生しました" },
+      { error: "エラーが発生しました" },
       { status: 500 }
     );
   }
@@ -117,7 +117,7 @@ export async function PUT(request: Request) {
     return Response.json({ ok: true });
   } catch (error) {
     return Response.json(
-      { error: error instanceof Error ? error.message : "エラーが発生しました" },
+      { error: "エラーが発生しました" },
       { status: 500 }
     );
   }

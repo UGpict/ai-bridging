@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return Response.json(
-      { error: error instanceof Error ? error.message : "エラーが発生しました" },
+      { error: "エラーが発生しました" },
       { status: 500 }
     );
   }

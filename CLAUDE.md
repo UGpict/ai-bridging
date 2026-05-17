@@ -34,37 +34,49 @@
 /
 ├── app/
 │   ├── login/
-│   │   └── page.tsx          # Googleログイン画面
+│   │   └── page.tsx              # Googleログイン画面
+│   ├── onboarding/
+│   │   └── page.tsx              # 新規ユーザー：マネージャー作成 or 招待コードで参加
 │   ├── dashboard/
-│   │   ├── page.tsx          # 上司：チーム全体タスク・バッジ一覧
-│   │   └── AddMemberButton.tsx  # メンバー追加モーダル（Client Component）
+│   │   ├── page.tsx              # 上司：チーム全体タスク・バッジ一覧
+│   │   ├── AddMemberButton.tsx   # メンバー追加モーダル（Client Component）
+│   │   └── InviteCodeCard.tsx    # 招待コード表示カード（Client Component）
 │   ├── chat/
-│   │   └── page.tsx          # 上司：指示入力チャット→タスク分解→割り振り承認
+│   │   └── page.tsx              # 上司：モード選択→チャット→タスク分解→割り振り承認
 │   ├── tasks/
-│   │   ├── page.tsx          # 部下：自分のタスク一覧
+│   │   ├── page.tsx              # 部下：自分のタスク一覧（バッジ・スキルバー表示）
 │   │   └── [id]/
-│   │       └── page.tsx      # 部下：タスク詳細＋成果物提出
+│   │       └── page.tsx          # 部下：タスク詳細＋成果物提出＋レベルアップモーダル
+│   ├── components/
+│   │   ├── BadgeDisplay.tsx      # バッジ・スコア・プログレスバー表示
+│   │   ├── Header.tsx            # 共通ヘッダー
+│   │   └── LevelUpModal.tsx      # レベルアップ演出モーダル
 │   └── api/
 │       ├── auth/
-│       │   ├── me/route.ts       # 自分のユーザー情報取得
-│       │   └── session/route.ts  # Cookieセッション発行・ロール返却
+│       │   ├── me/route.ts           # 自分のユーザー情報取得
+│       │   ├── session/route.ts      # Cookieセッション発行・ロール返却
+│       │   └── onboard/route.ts      # 新規ユーザーオンボーディング（組織作成/参加）
 │       ├── chat/
-│       │   └── route.ts      # Geminiとのチャット往復・タスク分解
+│       │   └── route.ts          # Geminiとのチャット往復・タスク分解（mode対応）
 │       ├── assign/
-│       │   └── route.ts      # バッジスコアに基づく担当者推薦
+│       │   └── route.ts          # バッジスコアに基づく担当者推薦・承認
 │       ├── evaluate/
-│       │   └── route.ts      # 成果物AIチェック・スコア更新
+│       │   └── route.ts          # 成果物AIチェック・スコア更新
 │       ├── members/
-│       │   └── route.ts      # メンバー追加API
+│       │   └── route.ts          # メンバー追加API
 │       └── tasks/
-│           └── [id]/route.ts # タスク個別操作
+│           └── [id]/route.ts     # タスク個別取得・成果物提出
 ├── lib/
 │   ├── gemini.ts             # Gemini API クライアント（Vertex AI）
-│   ├── firebase.ts           # Firebase Client SDK初期化
+│   ├── firebase.ts           # Firebase Client SDK初期化（APIキーはフォールバック値をハードコード）
 │   ├── firebaseAdmin.ts      # Firebase Admin SDK初期化
 │   └── firestore.ts          # Firestoreのread/write関数
 ├── types/
 │   └── index.ts              # 型定義
+├── scripts/
+│   └── make_env_yaml.py      # .env.local → env.yaml 変換スクリプト（デプロイ用）
+├── Dockerfile                # Cloud Run用マルチステージビルド
+├── .dockerignore
 └── CLAUDE.md                 # このファイル
 ```
 
@@ -75,6 +87,11 @@
 ログイン後、Firestoreのユーザードキュメントの`role`フィールドで分岐：
 - `role: "manager"` → `/dashboard` にリダイレクト
 - `role: "member"` → `/tasks` にリダイレクト
+- `role: "new"`（未登録）→ `/onboarding` にリダイレクト
+
+### オンボーディングフロー（`/onboarding`）
+1. **マネージャーとして作成** → 組織名を入力 → 6桁招待コードが発行される
+2. **メンバーとして参加** → 招待コードを入力 → 組織に参加
 
 ---
 
@@ -103,17 +120,35 @@
   id: string
   title: string
   description: string
+  requiredSkill?: "documentation" | "communication" | "technical"
+  deadline?: "today" | "project"   // 今日中タスクかプロジェクトタスクか
   assigneeUid: string
   assigneeName: string
   status: "pending" | "submitted" | "evaluated"
   createdAt: Timestamp
   submission?: string       // 部下が提出したテキスト
   evaluation?: {
-    score: number           // 0-100
+    breakdown: {
+      requirement: number   // 0-40
+      clarity: number       // 0-30
+      completeness: number  // 0-30
+    }
+    score: number           // breakdown合計（0-100）
     delta: number           // スコア増減
     level: string           // 更新後のバッジレベル
     feedback: string        // 自然言語フィードバック
   }
+}
+```
+
+### `organizations/{managerUid}`
+```ts
+{
+  id: string
+  name: string
+  managerUid: string
+  managerName: string
+  inviteCode: string        // 6桁英数字
 }
 ```
 
@@ -140,11 +175,17 @@
 
 ### 1. タスク分解（`/api/chat`）
 
-**システムプロンプト要件：**
-- 上司との会話を通じて曖昧な指示を明確化する
-- 確認質問は1回につき1〜2個に絞る（ユーザーの負荷を下げる）
-- 十分な情報が集まったら、タスクを複数に分解してJSONで返す
-- 最終出力フォーマット：
+リクエストに `mode: "project" | "today"` を含める。
+
+**projectモード（デフォルト）：**
+- Q&Aを3〜5往復して曖昧な指示を明確化してからタスク分解
+- 確認質問は1回につき1〜2個に絞る
+
+**todayモード（今日中タスク）：**
+- Q&Aは原則なし。最初のメッセージから即座にタスク分解
+- どうしても不明な点が1つある場合のみ1問だけ質問可
+
+**共通出力フォーマット：**
 
 ```json
 {
@@ -153,7 +194,8 @@
     {
       "title": "タスク名",
       "description": "詳細説明",
-      "requiredSkill": "documentation | communication | technical"
+      "requiredSkill": "documentation | communication | technical",
+      "deadline": "today | project"
     }
   ]
 }
@@ -266,17 +308,39 @@ const parsed = JSON.parse(clean);
 
 `.env.local` に設定すること。値にカンマや余分なクォートを付けないこと（過去に認証エラーの原因になった）。`FIREBASE_PRIVATE_KEY` のみダブルクォートで囲む（改行文字`\n`を含むため）。
 
+```
+FIREBASE_PROJECT_ID=ai-bridging
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-fbsvc@ai-bridging.iam.gserviceaccount.com
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=ai-bridging.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=ai-bridging
+```
+
+### Cloud Runデプロイ時の注意
+- `NEXT_PUBLIC_*` はビルド時にバンドルへ焼き込まれる。`--set-build-env-vars` では **Dockerの `--build-arg` に渡らない**ため、`lib/firebase.ts` に `||` フォールバック値をハードコードしている（Firebase APIキーは公開値なので問題なし）
+- `env.yaml` は `scripts/make_env_yaml.py` で生成する（`GEMINI_API_KEY` は除外、Vertex AIはADC認証のため不要）
+- `env.yaml` は `.gitignore` 対象（秘密鍵を含むため）
+- デプロイコマンド：`gcloud run deploy ai-bridging --source . --region asia-northeast1 --allow-unauthenticated --env-vars-file env.yaml --platform managed --quiet`
+
 ---
 
 ## デモシナリオ（実装の優先度判断に使うこと）
 
+**シナリオA: プロジェクトタスク**
 1. 上司がチャット画面で「新製品の展示会準備、よろしく」と入力
 2. GeminiがQ&Aを往復して指示を明確化
 3. タスクが3つに分解される（資料作成・会場手配・デモ機セットアップ）
 4. AIが3人の部下を推薦（スキルスコアに基づく）→上司が一括承認
-5. 部下3人に通知→各自がタスク詳細を確認
+5. 部下3人が各自タスク詳細を確認
 6. 1人が成果物テキストを提出→AIが評価→バッジレベルアップ
 7. 上司がダッシュボードでチーム全体のバッジ状況を確認
+
+**シナリオB: 今日中タスク（緊急対応）**
+1. 上司がチャット画面で「今日中」モードを選択
+2. 「クライアントへの障害報告書を今日中に出して」と入力
+3. GeminiがQ&Aなしで即座にタスク分解（🔥今日中バッジ付き）
+4. 上司が一括承認→部下のタスク一覧に赤バッジで表示
 
 **デモに映らない機能は後回しにしてよい。**
 
@@ -287,11 +351,13 @@ const parsed = JSON.parse(clean);
 - [x] プロジェクト初期化（Next.js + TypeScript + Tailwind）
 - [x] Firebase / Firestore セットアップ
 - [x] 認証（Googleログイン・ロール分岐）
-- [x] チャット画面（タスク分解フロー）
+- [x] オンボーディング（組織作成・招待コード参加）
+- [x] チャット画面（プロジェクト / 今日中モード切り替え）
 - [x] 割り振り承認画面
-- [x] 部下タスク一覧・詳細画面
+- [x] 部下タスク一覧・詳細画面（🔥今日中バッジ表示）
 - [x] 成果物提出・AI評価
-- [x] ダッシュボード（チーム全体）
+- [x] ダッシュボード（チーム全体・招待コード表示）
 - [x] メンバー追加UI（ダッシュボードのモーダル）
-- [ ] バッジビジュアル・レベルアップ演出
-- [ ] Cloud Runデプロイ
+- [x] バッジビジュアル・レベルアップ演出
+- [x] Cloud Runデプロイ（`https://ai-bridging-649847191589.asia-northeast1.run.app`）
+- [x] APIルートの認可チェック（セッション所有者・担当者確認）

@@ -312,7 +312,7 @@ Firestore コンソール（`users/{uid}`）でメンバーのスキルスコア
 **Firestore への全アクセスは Firebase Admin SDK（サーバーサイド）経由のみ。**
 クライアント SDK は Firebase Authentication の認証のみに使用し、Firestore への直接読み書きは行っていない。
 
-### 推奨ルール（Firestore コンソールで設定）
+### 設定済みルール（2026-05-17 適用）
 ```
 rules_version = '2';
 service cloud.firestore {

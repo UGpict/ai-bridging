@@ -27,7 +27,9 @@ export default function LoginPage() {
       if (!res.ok) throw new Error("セッション作成に失敗しました");
 
       const data = (await res.json()) as { role: string };
-      if (data.role === "manager") {
+      if (data.role === "new") {
+        router.push("/onboarding");
+      } else if (data.role === "manager") {
         router.push("/dashboard");
       } else {
         router.push("/tasks");

@@ -21,7 +21,7 @@
 |---|---|
 | フロントエンド | Next.js（App Router） |
 | API層 | Next.js API Route |
-| AI | Gemini 2.5 Pro（`gemini-2.5-pro`） |
+| AI | Gemini 3.1 Flash Lite（`gemini-3.1-flash-lite`）via Vertex AI |
 | DB | Firestore |
 | 認証 | Firebase Authentication（Googleログイン） |
 | ホスティング | Cloud Run |
@@ -36,7 +36,8 @@
 │   ├── login/
 │   │   └── page.tsx          # Googleログイン画面
 │   ├── dashboard/
-│   │   └── page.tsx          # 上司：チーム全体タスク・バッジ一覧
+│   │   ├── page.tsx          # 上司：チーム全体タスク・バッジ一覧
+│   │   └── AddMemberButton.tsx  # メンバー追加モーダル（Client Component）
 │   ├── chat/
 │   │   └── page.tsx          # 上司：指示入力チャット→タスク分解→割り振り承認
 │   ├── tasks/
@@ -44,15 +45,23 @@
 │   │   └── [id]/
 │   │       └── page.tsx      # 部下：タスク詳細＋成果物提出
 │   └── api/
+│       ├── auth/
+│       │   ├── me/route.ts       # 自分のユーザー情報取得
+│       │   └── session/route.ts  # Cookieセッション発行・ロール返却
 │       ├── chat/
 │       │   └── route.ts      # Geminiとのチャット往復・タスク分解
 │       ├── assign/
 │       │   └── route.ts      # バッジスコアに基づく担当者推薦
-│       └── evaluate/
-│           └── route.ts      # 成果物AIチェック・スコア更新
+│       ├── evaluate/
+│       │   └── route.ts      # 成果物AIチェック・スコア更新
+│       ├── members/
+│       │   └── route.ts      # メンバー追加API
+│       └── tasks/
+│           └── [id]/route.ts # タスク個別操作
 ├── lib/
-│   ├── gemini.ts             # Gemini API クライアント
-│   ├── firebase.ts           # Firebase初期化
+│   ├── gemini.ts             # Gemini API クライアント（Vertex AI）
+│   ├── firebase.ts           # Firebase Client SDK初期化
+│   ├── firebaseAdmin.ts      # Firebase Admin SDK初期化
 │   └── firestore.ts          # Firestoreのread/write関数
 ├── types/
 │   └── index.ts              # 型定義
@@ -240,17 +249,22 @@ const parsed = JSON.parse(clean);
 
 ---
 
+## Gemini API（Vertex AI）の注意事項
+
+- `@google/genai` SDK を `vertexai: true` + `location: "global"` で使用
+- モデル名: `gemini-3.1-flash-lite`（このプロジェクトでアクセス可能な唯一のモデル）
+- `us-central1` など特定リージョンでは404になる → `"global"` 必須
+- ローカル開発時はADC（Application Default Credentials）で認証
+  - `gcloud auth application-default login` を実行済みであること
+  - `gcloud auth application-default set-quota-project ai-bridging` も実行済み
+- Cloud Runデプロイ時はサービスアカウントに `roles/aiplatform.user` を付与することでADC自動動作
+- 組織ポリシーによりAPIキー認証が禁止されているため、APIキー方式は使用不可
+
+---
+
 ## 環境変数
 
-```
-GEMINI_API_KEY=
-FIREBASE_PROJECT_ID=
-FIREBASE_CLIENT_EMAIL=
-FIREBASE_PRIVATE_KEY=
-NEXT_PUBLIC_FIREBASE_API_KEY=
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=
-```
+`.env.local` に設定すること。値にカンマや余分なクォートを付けないこと（過去に認証エラーの原因になった）。`FIREBASE_PRIVATE_KEY` のみダブルクォートで囲む（改行文字`\n`を含むため）。
 
 ---
 
@@ -270,12 +284,14 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=
 
 ## 現在の実装状況
 
-- [ ] プロジェクト初期化（Next.js + TypeScript + Tailwind）
-- [ ] Firebase / Firestore セットアップ
-- [ ] 認証（Googleログイン・ロール分岐）
-- [ ] チャット画面（タスク分解フロー）
-- [ ] 割り振り承認画面
-- [ ] 部下タスク一覧・詳細画面
-- [ ] 成果物提出・AI評価
+- [x] プロジェクト初期化（Next.js + TypeScript + Tailwind）
+- [x] Firebase / Firestore セットアップ
+- [x] 認証（Googleログイン・ロール分岐）
+- [x] チャット画面（タスク分解フロー）
+- [x] 割り振り承認画面
+- [x] 部下タスク一覧・詳細画面
+- [x] 成果物提出・AI評価
+- [x] ダッシュボード（チーム全体）
+- [x] メンバー追加UI（ダッシュボードのモーダル）
 - [ ] バッジビジュアル・レベルアップ演出
-- [ ] ダッシュボード（チーム全体）
+- [ ] Cloud Runデプロイ

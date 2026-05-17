@@ -6,6 +6,14 @@ export type TaskStatus = "pending" | "submitted" | "evaluated";
 export type RequiredSkill = "documentation" | "communication" | "technical";
 export type SessionStatus = "chatting" | "proposed" | "approved";
 
+export interface Organization {
+  id: string;
+  name: string;
+  managerUid: string;
+  managerName: string;
+  inviteCode: string;
+}
+
 export interface User {
   uid: string;
   name: string;
@@ -18,12 +26,14 @@ export interface User {
     communication: number;
     technical: number;
   };
+  orgId?: string;
 }
 
 export interface Task {
   id: string;
   title: string;
   description: string;
+  requiredSkill?: RequiredSkill;
   assigneeUid: string;
   assigneeName: string;
   status: TaskStatus;

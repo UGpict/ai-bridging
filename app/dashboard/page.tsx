@@ -1,9 +1,11 @@
 import { adminAuth } from "@/lib/firebaseAdmin";
-import { getUser, getAllTasks, getAllMembers } from "@/lib/firestore";
+import { getUser, getAllTasks, getAllMembers, getOrganizationByManager } from "@/lib/firestore";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import type { Task, User } from "@/types";
+import AddMemberButton from "./AddMemberButton";
+import InviteCodeCard from "./InviteCodeCard";
+import Header from "@/app/components/Header";
 
 function BadgeBadge({ level }: { level: string }) {
   const colors: Record<string, string> = {
@@ -50,7 +52,11 @@ export default async function DashboardPage() {
   const user = await getUser(uid);
   if (!user || user.role !== "manager") redirect("/tasks");
 
-  const [tasks, members] = await Promise.all([getAllTasks(), getAllMembers()]);
+  const [tasks, members, org] = await Promise.all([
+    getAllTasks(),
+    getAllMembers(),
+    getOrganizationByManager(uid),
+  ]);
 
   const stats = {
     total: tasks.length,
@@ -61,25 +67,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
-            AI
-          </div>
-          <h1 className="text-lg font-semibold text-gray-900">AI Bridging</h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">{user.name}</span>
-          <Link
-            href="/chat"
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-          >
-            新しい指示を入力
-          </Link>
-        </div>
-      </header>
+      <Header
+        userName={user.name}
+        action={{ label: "新しい指示を入力", href: "/chat" }}
+      />
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+        {org && <InviteCodeCard code={org.inviteCode} teamName={org.name} />}
+
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           {[
@@ -97,7 +92,10 @@ export default async function DashboardPage() {
 
         {/* Members */}
         <section>
-          <h2 className="text-base font-semibold text-gray-900 mb-4">チームメンバー</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-gray-900">チームメンバー</h2>
+            <AddMemberButton />
+          </div>
           <div className="grid grid-cols-3 gap-4">
             {members.map((m: User) => (
               <div key={m.uid} className="bg-white rounded-xl border border-gray-200 p-5">

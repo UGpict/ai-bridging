@@ -19,11 +19,16 @@ export async function POST(request: Request) {
       return Response.json({ error: "未認証" }, { status: 401 });
     }
 
-    await adminAuth.verifyIdToken(session.value);
+    const decoded = await adminAuth.verifyIdToken(session.value);
     const { sessionId, tasks } = (await request.json()) as {
       sessionId: string;
       tasks: ClarifiedTask[];
     };
+
+    const sessionDoc = await getSession(sessionId);
+    if (!sessionDoc || sessionDoc.managerUid !== decoded.uid) {
+      return Response.json({ error: "権限がありません" }, { status: 403 });
+    }
 
     const members = await getAllMembers();
     if (members.length === 0) {
@@ -78,12 +83,15 @@ export async function PUT(request: Request) {
       return Response.json({ error: "未認証" }, { status: 401 });
     }
 
-    await adminAuth.verifyIdToken(session.value);
+    const decodedPut = await adminAuth.verifyIdToken(session.value);
     const { sessionId } = (await request.json()) as { sessionId: string };
 
     const sessionData = await getSession(sessionId);
     if (!sessionData) {
       return Response.json({ error: "セッションが見つかりません" }, { status: 404 });
+    }
+    if (sessionData.managerUid !== decodedPut.uid) {
+      return Response.json({ error: "権限がありません" }, { status: 403 });
     }
 
     for (const assignment of sessionData.assignmentProposal) {
@@ -95,6 +103,7 @@ export async function PUT(request: Request) {
       await createTask({
         title: task.title,
         description: task.description,
+        requiredSkill: task.requiredSkill,
         assigneeUid: assignment.assigneeUid,
         assigneeName: assignment.assigneeName,
         status: "pending",

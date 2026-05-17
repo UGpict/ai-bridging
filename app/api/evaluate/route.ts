@@ -1,7 +1,7 @@
 import { adminAuth } from "@/lib/firebaseAdmin";
 import { getTask, evaluateTask, getUser, updateUserBadge } from "@/lib/firestore";
 import { generateContent } from "@/lib/gemini";
-import type { EvaluationResponse } from "@/types";
+import type { EvaluationResponse, RequiredSkill } from "@/types";
 import { cookies } from "next/headers";
 
 function calcBadgeLevel(score: number): string {
@@ -28,12 +28,15 @@ export async function POST(request: Request) {
       return Response.json({ error: "未認証" }, { status: 401 });
     }
 
-    await adminAuth.verifyIdToken(session.value);
+    const decoded = await adminAuth.verifyIdToken(session.value);
     const { taskId } = (await request.json()) as { taskId: string };
 
     const task = await getTask(taskId);
     if (!task || !task.submission) {
       return Response.json({ error: "タスクまたは提出物が見つかりません" }, { status: 404 });
+    }
+    if (task.assigneeUid !== decoded.uid) {
+      return Response.json({ error: "権限がありません" }, { status: 403 });
     }
 
     const prompt = `以下のタスクの要件と、部下が提出したテキストを照合し、採点してください。
@@ -59,6 +62,9 @@ ${task.submission}
     const clean = rawResponse.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean) as Omit<EvaluationResponse, "delta" | "level">;
 
+    // breakdown の合計と score の乖離を自動補正
+    parsed.score = parsed.breakdown.requirement + parsed.breakdown.clarity + parsed.breakdown.completeness;
+
     const delta = calcDelta(parsed.score);
     const user = await getUser(task.assigneeUid);
     const newScore = Math.max(0, (user?.badgeScore ?? 0) + delta);
@@ -72,11 +78,13 @@ ${task.submission}
 
     await evaluateTask(taskId, evaluation);
 
-    const skillField = (() => {
-      if (task.description.includes("documentation")) return "documentation";
-      if (task.description.includes("communication")) return "communication";
-      return "technical";
-    })();
+    const skillField: RequiredSkill =
+      task.requiredSkill ??
+      (task.description.includes("documentation")
+        ? "documentation"
+        : task.description.includes("communication")
+        ? "communication"
+        : "technical");
 
     await updateUserBadge(task.assigneeUid, newScore, newLevel, skillField, Math.max(0, delta));
 

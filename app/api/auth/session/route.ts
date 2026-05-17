@@ -1,6 +1,5 @@
-import { adminAuth, adminDb } from "@/lib/firebaseAdmin";
-import { getUser, createUser } from "@/lib/firestore";
-import type { User } from "@/types";
+import { adminAuth } from "@/lib/firebaseAdmin";
+import { getUser } from "@/lib/firestore";
 import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
@@ -18,19 +17,9 @@ export async function POST(request: Request) {
       path: "/",
     });
 
-    let user = await getUser(uid);
+    const user = await getUser(uid);
     if (!user) {
-      const newUser: User = {
-        uid,
-        name: decoded.name ?? decoded.email ?? uid,
-        email: decoded.email ?? "",
-        role: "member",
-        badgeScore: 0,
-        badgeLevel: "見習い",
-        skills: { documentation: 0, communication: 0, technical: 0 },
-      };
-      await createUser(newUser);
-      user = newUser;
+      return Response.json({ role: "new" });
     }
 
     return Response.json({ role: user.role });

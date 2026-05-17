@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { ClarifiedTask, Assignment } from "@/types";
+import Header from "@/app/components/Header";
 
 type MessageRole = "user" | "assistant";
 interface ChatMessage {
@@ -146,12 +147,7 @@ export default function ChatPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-3">
-        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
-          AI
-        </div>
-        <h1 className="text-lg font-semibold text-gray-900">指示入力チャット</h1>
-      </header>
+      <Header pageTitle="指示入力チャット" backHref="/dashboard" />
 
       <div className="flex flex-1 max-w-4xl mx-auto w-full px-4 py-6 gap-6">
         {/* Chat */}

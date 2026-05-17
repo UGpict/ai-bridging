@@ -1,28 +1,47 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
-import type { Task } from "@/types";
+import { useParams } from "next/navigation";
+import type { Task, BadgeLevel } from "@/types";
+import Header from "@/app/components/Header";
+import LevelUpModal from "@/app/components/LevelUpModal";
 
 export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [task, setTask] = useState<Task | null>(null);
   const [submission, setSubmission] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
   const [error, setError] = useState("");
+  const [prevLevel, setPrevLevel] = useState<BadgeLevel | null>(null);
+  const [levelUpData, setLevelUpData] = useState<{
+    from: BadgeLevel;
+    to: BadgeLevel;
+    delta: number;
+  } | null>(null);
 
   useEffect(() => {
-    fetch(`/api/tasks/${id}`)
-      .then((r) => r.json())
-      .then((data: Task) => {
-        setTask(data);
-        if (data.submission) setSubmission(data.submission);
-      })
-      .catch(() => setError("タスクの読み込みに失敗しました"))
-      .finally(() => setLoading(false));
+    const load = async () => {
+      try {
+        const [taskRes, userRes] = await Promise.all([
+          fetch(`/api/tasks/${id}`),
+          fetch("/api/auth/me"),
+        ]);
+        const taskData = (await taskRes.json()) as Task;
+        setTask(taskData);
+        if (taskData.submission) setSubmission(taskData.submission);
+        if (userRes.ok) {
+          const userData = (await userRes.json()) as { badgeLevel: BadgeLevel };
+          setPrevLevel(userData.badgeLevel);
+        }
+      } catch {
+        setError("読み込みに失敗しました");
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
   }, [id]);
 
   const handleSubmit = async () => {
@@ -39,7 +58,6 @@ export default function TaskDetailPage() {
       const updated = (await res.json()) as Task;
       setTask(updated);
 
-      // 自動評価
       setEvaluating(true);
       const evalRes = await fetch("/api/evaluate", {
         method: "POST",
@@ -48,7 +66,15 @@ export default function TaskDetailPage() {
       });
       if (!evalRes.ok) throw new Error("評価に失敗しました");
       const evalData = (await evalRes.json()) as Task["evaluation"];
-      setTask((prev) => prev ? { ...prev, status: "evaluated", evaluation: evalData } : prev);
+      setTask((prev) => (prev ? { ...prev, status: "evaluated", evaluation: evalData } : prev));
+
+      if (prevLevel && evalData && evalData.level !== prevLevel) {
+        setLevelUpData({
+          from: prevLevel,
+          to: evalData.level as BadgeLevel,
+          delta: evalData.delta,
+        });
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "エラーが発生しました");
     } finally {
@@ -77,15 +103,16 @@ export default function TaskDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center gap-4">
-        <button
-          onClick={() => router.push("/tasks")}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          ← 戻る
-        </button>
-        <h1 className="text-lg font-semibold text-gray-900">タスク詳細</h1>
-      </header>
+      <Header pageTitle="タスク詳細" backHref="/tasks" />
+
+      {levelUpData && (
+        <LevelUpModal
+          from={levelUpData.from}
+          to={levelUpData.to}
+          delta={levelUpData.delta}
+          onClose={() => setLevelUpData(null)}
+        />
+      )}
 
       <main className="max-w-2xl mx-auto px-6 py-8 space-y-6">
         {/* Task info */}
@@ -107,21 +134,28 @@ export default function TaskDetailPage() {
                 <p className="text-sm font-medium text-gray-600">
                   スコア変動:{" "}
                   <span className={task.evaluation.delta >= 0 ? "text-green-600" : "text-red-600"}>
-                    {task.evaluation.delta >= 0 ? "+" : ""}{task.evaluation.delta}pt
+                    {task.evaluation.delta >= 0 ? "+" : ""}
+                    {task.evaluation.delta}pt
                   </span>
                 </p>
                 <p className="text-sm font-medium text-gray-600">
-                  バッジレベル: <span className="text-indigo-600">{task.evaluation.level}</span>
+                  バッジレベル:{" "}
+                  <span className="text-indigo-600 font-semibold">{task.evaluation.level}</span>
                 </p>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3 mb-4">
-              {([
-                { key: "requirement", label: "要件充足", max: 40 },
-                { key: "clarity", label: "明確性", max: 30 },
-                { key: "completeness", label: "完結性", max: 30 },
-              ] as const).map((item) => (
-                <div key={item.key} className="bg-white rounded-lg p-3 text-center border border-indigo-100">
+              {(
+                [
+                  { key: "requirement", label: "要件充足", max: 40 },
+                  { key: "clarity", label: "明確性", max: 30 },
+                  { key: "completeness", label: "完結性", max: 30 },
+                ] as const
+              ).map((item) => (
+                <div
+                  key={item.key}
+                  className="bg-white rounded-lg p-3 text-center border border-indigo-100"
+                >
                   <p className="text-lg font-bold text-gray-900">
                     {task.evaluation!.breakdown[item.key]}
                     <span className="text-xs text-gray-400">/{item.max}</span>

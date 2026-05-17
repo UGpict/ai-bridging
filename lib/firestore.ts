@@ -1,6 +1,6 @@
 import { adminDb } from "./firebaseAdmin";
 import { FieldValue } from "firebase-admin/firestore";
-import type { User, Task, Session, ClarifiedTask, Assignment, SessionMessage } from "@/types";
+import type { User, Task, Session, ClarifiedTask, Assignment, SessionMessage, Organization } from "@/types";
 
 // ---- Users ----
 
@@ -20,6 +20,29 @@ export async function getAllMembers(): Promise<User[]> {
 
 export async function createUser(user: User): Promise<void> {
   await adminDb.collection("users").doc(user.uid).set(user);
+}
+
+export async function createOrganization(org: Organization): Promise<void> {
+  await adminDb.collection("organizations").doc(org.id).set({
+    ...org,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+}
+
+export async function getOrganizationByCode(inviteCode: string): Promise<Organization | null> {
+  const snap = await adminDb
+    .collection("organizations")
+    .where("inviteCode", "==", inviteCode)
+    .limit(1)
+    .get();
+  if (snap.empty) return null;
+  return snap.docs[0].data() as Organization;
+}
+
+export async function getOrganizationByManager(managerUid: string): Promise<Organization | null> {
+  const doc = await adminDb.collection("organizations").doc(managerUid).get();
+  if (!doc.exists) return null;
+  return doc.data() as Organization;
 }
 
 export async function updateUserBadge(

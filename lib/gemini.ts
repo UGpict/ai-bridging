@@ -1,10 +1,17 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? "" });
+export const geminiModel = "gemini-3.1-flash-lite";
 
-export const geminiModel = "gemini-2.5-pro";
+function getAI(): GoogleGenAI {
+  return new GoogleGenAI({
+    vertexai: true,
+    project: process.env.FIREBASE_PROJECT_ID,
+    location: "global",
+  });
+}
 
 export async function generateContent(prompt: string): Promise<string> {
+  const ai = getAI();
   const response = await ai.models.generateContent({
     model: geminiModel,
     contents: prompt,
@@ -16,6 +23,7 @@ export async function generateContentWithHistory(
   systemInstruction: string,
   messages: { role: "user" | "model"; content: string }[]
 ): Promise<string> {
+  const ai = getAI();
   const contents = messages.map((m) => ({
     role: m.role,
     parts: [{ text: m.content }],

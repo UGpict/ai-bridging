@@ -33,9 +33,21 @@ export async function POST(request: Request, ctx: Ctx) {
       return Response.json({ error: "未認証" }, { status: 401 });
     }
 
-    await adminAuth.verifyIdToken(session.value);
+    const decoded = await adminAuth.verifyIdToken(session.value);
     const { id } = await ctx.params;
     const { submission } = (await request.json()) as { submission: string };
+
+    if (!submission?.trim() || submission.length > 10000) {
+      return Response.json({ error: "提出テキストは1〜10000文字で入力してください" }, { status: 400 });
+    }
+
+    const existing = await getTask(id);
+    if (!existing) {
+      return Response.json({ error: "タスクが見つかりません" }, { status: 404 });
+    }
+    if (existing.assigneeUid !== decoded.uid) {
+      return Response.json({ error: "権限がありません" }, { status: 403 });
+    }
 
     await submitTask(id, submission);
     const task = await getTask(id);

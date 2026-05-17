@@ -40,6 +40,10 @@ export async function POST(request: Request) {
       sessionId?: string;
     };
 
+    if (!message?.trim() || message.length > 5000) {
+      return Response.json({ error: "メッセージは1〜5000文字で入力してください" }, { status: 400 });
+    }
+
     let currentSessionId = sessionId;
     let messages: SessionMessage[] = [];
 
@@ -47,6 +51,9 @@ export async function POST(request: Request) {
       const existing = await getSession(currentSessionId);
       if (!existing) {
         return Response.json({ error: "セッションが見つかりません" }, { status: 404 });
+      }
+      if (existing.managerUid !== decoded.uid) {
+        return Response.json({ error: "権限がありません" }, { status: 403 });
       }
       messages = existing.messages;
     } else {

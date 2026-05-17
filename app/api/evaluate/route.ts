@@ -97,7 +97,7 @@ ${task.submission}
     await updateUserBadge(task.assigneeUid, newScore, newLevel, skillField, Math.max(0, delta));
 
     return Response.json(evaluation);
-  } catch (error) {
+  } catch {
     return Response.json(
       { error: "エラーが発生しました" },
       { status: 500 }

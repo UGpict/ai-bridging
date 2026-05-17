@@ -34,7 +34,6 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [phase, setPhase] = useState<Phase>("chatting");
-  const [tasks, setTasks] = useState<ClarifiedTask[]>([]);
   const [assignments, setAssignments] = useState<AssignResult[]>([]);
   const [memberScores, setMemberScores] = useState<MemberScore[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,7 +52,6 @@ export default function ChatPage() {
     ]);
     setSessionId(undefined);
     setPhase("chatting");
-    setTasks([]);
     setAssignments([]);
     setMemberScores([]);
   };
@@ -88,7 +86,6 @@ export default function ChatPage() {
       setSessionId(data.sessionId);
 
       if (data.status === "complete" && data.tasks) {
-        setTasks(data.tasks);
         setMessages((prev) => [
           ...prev,
           {

@@ -3,7 +3,7 @@ import {
   createSession,
   getSession,
   updateSessionMessages,
-  updateSessionWithTasks,
+  getOrganizationByManager,
 } from "@/lib/firestore";
 import { generateContentWithHistory } from "@/lib/gemini";
 import type { GeminiChatResponse, SessionMessage } from "@/types";
@@ -77,8 +77,10 @@ export async function POST(request: Request) {
       }
       messages = existing.messages;
     } else {
+      const org = await getOrganizationByManager(decoded.uid);
       currentSessionId = await createSession({
         managerUid: decoded.uid,
+        orgId: org?.id,
         originalInstruction: message,
         clarifiedTasks: [],
         assignmentProposal: [],
@@ -111,7 +113,7 @@ export async function POST(request: Request) {
       sessionId: currentSessionId,
       message: parsed.message ?? "",
     });
-  } catch (error) {
+  } catch {
     return Response.json(
       { error: "エラーが発生しました" },
       { status: 500 }

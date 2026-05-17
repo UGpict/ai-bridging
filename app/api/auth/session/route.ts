@@ -13,7 +13,8 @@ export async function POST(request: Request) {
     cookieStore.set("__session", idToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60, // 1 hour
+      sameSite: "lax",
+      maxAge: 60 * 60,
       path: "/",
     });
 

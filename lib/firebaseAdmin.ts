@@ -3,6 +3,7 @@ import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import { getAuth, type Auth } from "firebase-admin/auth";
 
 let app: App | undefined;
+let firestoreInstance: Firestore | undefined;
 
 function getApp(): App {
   if (app) return app;
@@ -23,9 +24,16 @@ function getApp(): App {
   return app;
 }
 
+function getFirestoreInstance(): Firestore {
+  if (firestoreInstance) return firestoreInstance;
+  firestoreInstance = getFirestore(getApp());
+  firestoreInstance.settings({ ignoreUndefinedProperties: true });
+  return firestoreInstance;
+}
+
 export const adminDb: Firestore = new Proxy({} as Firestore, {
   get(_, prop) {
-    return (getFirestore(getApp()) as unknown as Record<string | symbol, unknown>)[prop];
+    return (getFirestoreInstance() as unknown as Record<string | symbol, unknown>)[prop];
   },
 });
 

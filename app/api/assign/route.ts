@@ -75,7 +75,7 @@ ${membersJson}
     }));
 
     return Response.json({ assignments, memberScores });
-  } catch (error) {
+  } catch {
     return Response.json(
       { error: "エラーが発生しました" },
       { status: 500 }
@@ -129,7 +129,7 @@ export async function PUT(request: Request) {
     await approveSession(sessionId);
 
     return Response.json({ ok: true });
-  } catch (error) {
+  } catch {
     return Response.json(
       { error: "エラーが発生しました" },
       { status: 500 }

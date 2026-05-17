@@ -23,7 +23,7 @@
 | API層 | Next.js API Route |
 | AI | Gemini 3.1 Flash Lite（`gemini-3.1-flash-lite`）via Vertex AI |
 | DB | Firestore |
-| 認証 | Firebase Authentication（Googleログイン） |
+| 認証 | Firebase Authentication（Googleログイン・メール/パスワード） |
 | ホスティング | Cloud Run |
 
 ---
@@ -34,12 +34,13 @@
 /
 ├── app/
 │   ├── login/
-│   │   └── page.tsx              # Googleログイン画面
+│   │   └── page.tsx              # Googleログイン + メール/パスワードログイン・新規登録
 │   ├── onboarding/
 │   │   └── page.tsx              # 新規ユーザー：マネージャー作成 or 招待コードで参加
 │   ├── dashboard/
 │   │   ├── page.tsx              # 上司：チーム全体タスク・バッジ一覧
 │   │   ├── AddMemberButton.tsx   # メンバー追加モーダル（Client Component）
+│   │   ├── DeleteMemberButton.tsx # メンバー削除ボタン（Client Component）
 │   │   └── InviteCodeCard.tsx    # 招待コード表示カード（Client Component）
 │   ├── chat/
 │   │   └── page.tsx              # 上司：モード選択→チャット→タスク分解→割り振り承認
@@ -63,7 +64,8 @@
 │       ├── evaluate/
 │       │   └── route.ts          # 成果物AIチェック・スコア更新
 │       ├── members/
-│       │   └── route.ts          # メンバー追加API
+│       │   ├── route.ts          # メンバー追加API（POST）
+│       │   └── [uid]/route.ts    # メンバー削除API（DELETE）
 │       └── tasks/
 │           └── [id]/route.ts     # タスク個別取得・成果物提出
 ├── lib/
@@ -110,6 +112,7 @@
     documentation: number
     communication: number
     technical: number
+    ci_cd: number
   }
 }
 ```
@@ -157,6 +160,7 @@
 {
   id: string
   managerUid: string
+  orgId?: string                // 作成時にmanagerのorgIdを引き継ぐ（org分離に使用）
   originalInstruction: string   // 上司の元の曖昧な指示
   clarifiedTasks: Task[]        // 分解されたタスク一覧
   assignmentProposal: Assignment[]  // AI推薦の割り振り案
@@ -259,41 +263,19 @@
 Vertex AI の `gemini-3.1-flash-lite` には QPM（クエリ/分）制限がある。デモ中に 429 が出ると致命的。
 
 ### 現状の実装
-`lib/gemini.ts` にリトライロジックは**未実装**。429 は API Route の `catch` で 500 として返る。
+`lib/gemini.ts` にリトライロジック**実装済み**。最大3回、exponential backoff（1s → 2s → 4s）。429は `isRateLimitError()` で検知してリトライ、最終的に失敗すると API Route の `catch` で 500 として返る。
 
 ### デモ対策（優先度順）
 1. **デモ前にウォームアップしない** — デモ直前に大量テストをしない
 2. **チャット送信を連打しない** — UI の `disabled={loading}` が保護しているが念のため
-3. **429 が出たら** — 30〜60秒待ってリトライ。Vertex AI のリセット間隔は1分単位
-
-### リトライを実装するなら（必要になったら追加）
-`lib/gemini.ts` の呼び出しを以下のパターンでラップする：
-```ts
-// 最大3回、exponential backoff（1s → 2s → 4s）
-for (let i = 0; i < 3; i++) {
-  try { return await generateContent(prompt); }
-  catch (e) {
-    if (i === 2 || !isRateLimitError(e)) throw e;
-    await new Promise(r => setTimeout(r, 1000 * 2 ** i));
-  }
-}
-```
+3. **429 が出たら** — リトライが3回走る（最大7秒）。それでも失敗なら30〜60秒待つ
 
 ---
 
 ## スキルスコアの初期値と推薦ロジック
 
 ### 初期値
-オンボーディング時に全員 `skills: { documentation: 0, communication: 0, technical: 0 }` で作成される。**全員0の状態では推薦が機能しない**（AI が任意に選ぶだけ）。
-
-### デモ前の必須作業
-Firestore コンソール（`users/{uid}`）でメンバーのスキルスコアを手動設定する。デモ用の差をつけた例：
-
-| メンバー | documentation | communication | technical |
-|---|---|---|---|
-| Aさん | 80 | 30 | 20 |
-| Bさん | 20 | 80 | 30 |
-| Cさん | 30 | 20 | 80 |
+`AddMemberButton.tsx` のスライダーで追加時に指定する。デフォルト値は全スキル **50**。メンバー追加モーダルでスライダーを調整することで差をつけられる。
 
 ### スコア更新ロジック（評価後）
 `/api/evaluate` → `updateUserBadge()` で以下を更新：
@@ -301,8 +283,18 @@ Firestore コンソール（`users/{uid}`）でメンバーのスキルスコア
 - `skills.{requiredSkill}` += `delta`（スキル別も同時加算）
 - `badgeLevel` は `badgeScore` の閾値で再計算
 
-### 将来的な改善（デモ後）
-オンボーディング画面でスキルを自己申告させる（スライダーなど）か、初期値を均等値（例: 各50）に変更する。
+---
+
+## Firestore 複合インデックス
+
+`firestore.indexes.json` に定義済み。`npx firebase-tools deploy --only firestore:indexes` でデプロイする。
+
+必要なインデックス（追加・変更時に更新すること）：
+- `tasks`: `orgId` (ASC) + `createdAt` (DESC) — ダッシュボードの全タスク一覧
+- `tasks`: `assigneeUid` (ASC) + `createdAt` (DESC) — 部下のタスク一覧
+- `users`: `role` (ASC) + `orgId` (ASC) — orgIdでフィルタしたメンバー取得
+
+**注意:** `where`は必ず`orderBy`より前に書くこと。逆順だとFirestoreエラー。
 
 ---
 
@@ -344,7 +336,7 @@ gcloud run services update-traffic ai-bridging \
 ### デモ直前のデプロイ禁止ライン
 **デモ開始30分前以降は新規デプロイしない。** 動いているリビジョンのURLをブックマークしておくこと。
 
-現行リビジョン: `ai-bridging-00005-jrb`（2026-05-17時点）
+現行リビジョン: `ai-bridging-00011-k89`（2026-05-17時点、最新変更はまだデプロイ未済）
 
 ---
 
@@ -366,7 +358,7 @@ gcloud run services update-traffic ai-bridging \
 - TypeScript strict mode（`"strict": true`）
 - サーバーサイド処理はAPI Routeに集約（Gemini APIキー・Firebase Admin SDKはサーバーのみ）
 - Firestoreへの書き込みは`lib/firestore.ts`の関数経由のみ（直接書き込み禁止）
-- 認証チェックはミドルウェア（`middleware.ts`）で行う
+- 認証チェックはProxy（`proxy.ts`）で行う（Next.js 16で`middleware.ts`→`proxy.ts`にリネームされた）
 
 ### 禁止
 - `any`型の使用
@@ -445,13 +437,24 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=ai-bridging
 - [x] プロジェクト初期化（Next.js + TypeScript + Tailwind）
 - [x] Firebase / Firestore セットアップ
 - [x] 認証（Googleログイン・ロール分岐）
+- [x] メール/パスワードログイン・新規登録（審査員がその場で試せる）
 - [x] オンボーディング（組織作成・招待コード参加）
 - [x] チャット画面（プロジェクト / 今日中モード切り替え）
 - [x] 割り振り承認画面
 - [x] 部下タスク一覧・詳細画面（🔥今日中バッジ表示）
 - [x] 成果物提出・AI評価
 - [x] ダッシュボード（チーム全体・招待コード表示）
-- [x] メンバー追加UI（ダッシュボードのモーダル）
+- [x] メンバー追加UI（ダッシュボードのモーダル・スキルスライダー・初期値50）
+- [x] メンバー削除UI（DeleteMemberButton + DELETE /api/members/[uid]）
 - [x] バッジビジュアル・レベルアップ演出
 - [x] Cloud Runデプロイ（`https://ai-bridging-649847191589.asia-northeast1.run.app`）
-- [x] APIルートの認可チェック（セッション所有者・担当者確認）
+- [x] APIルートの認可チェック（セッション所有者・担当者確認・org分離）
+- [x] Firestore複合インデックス（`firestore.indexes.json`、デプロイ済み）
+- [x] Firestoreクエリ順序修正（`where`→`orderBy`の順）
+- [x] `ignoreUndefinedProperties: true`（orgIdがundefinedでも書き込めるよう対処）
+- [x] セッションCookieに`SameSite: lax`追加
+- [x] PRのURL検証（https必須・`new URL()`で構文チェック）
+- [x] Geminiリトライロジック（最大3回 exponential backoff）
+- [x] セッション（sessions）にorgIdを付与・型定義に追加
+- [x] lint warnings 全解消（未使用import・catch変数・未使用state）
+- [ ] Cloud Runデプロイ（最新版、メール認証・メンバー削除含む）

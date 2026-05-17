@@ -20,7 +20,8 @@ export default function AddMemberButton() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, skills }),
       });
-      if (!res.ok) throw new Error("追加に失敗しました");
+      const data = await res.json() as { uid?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "追加に失敗しました");
       setOpen(false);
       setName("");
       setEmail("");

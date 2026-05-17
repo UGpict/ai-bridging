@@ -21,6 +21,10 @@ export async function createUser(user: User): Promise<void> {
   await adminDb.collection("users").doc(user.uid).set(user);
 }
 
+export async function deleteUser(uid: string): Promise<void> {
+  await adminDb.collection("users").doc(uid).delete();
+}
+
 export async function createOrganization(org: Organization): Promise<void> {
   await adminDb.collection("organizations").doc(org.id).set({
     ...org,
@@ -79,9 +83,9 @@ export async function getTasksByAssignee(uid: string): Promise<Task[]> {
 }
 
 export async function getAllTasks(orgId?: string): Promise<Task[]> {
-  let query = adminDb.collection("tasks").orderBy("createdAt", "desc");
-  if (orgId) query = query.where("orgId", "==", orgId) as typeof query;
-  const snap = await query.get();
+  const base = adminDb.collection("tasks");
+  const filtered = orgId ? base.where("orgId", "==", orgId) : base;
+  const snap = await filtered.orderBy("createdAt", "desc").get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
 }
 

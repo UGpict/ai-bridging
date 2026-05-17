@@ -40,6 +40,14 @@ export async function POST(request: Request, ctx: Ctx) {
     if (!submission?.trim() || submission.length > 10000) {
       return Response.json({ error: "提出テキストは1〜10000文字で入力してください" }, { status: 400 });
     }
+    if (prUrl !== undefined && prUrl !== "") {
+      try { new URL(prUrl); } catch {
+        return Response.json({ error: "PRのURLが不正です" }, { status: 400 });
+      }
+      if (!prUrl.startsWith("https://")) {
+        return Response.json({ error: "PRのURLはhttpsで始まる必要があります" }, { status: 400 });
+      }
+    }
 
     const existing = await getTask(id);
     if (!existing) {

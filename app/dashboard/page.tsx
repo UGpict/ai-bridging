@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Task, User } from "@/types";
 import AddMemberButton from "./AddMemberButton";
+import DeleteMemberButton from "./DeleteMemberButton";
 import InviteCodeCard from "./InviteCodeCard";
 import Header from "@/app/components/Header";
 
@@ -104,7 +105,10 @@ export default async function DashboardPage() {
                     <p className="font-medium text-gray-900">{m.name}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{m.email}</p>
                   </div>
-                  <BadgeBadge level={m.badgeLevel} />
+                  <div className="flex flex-col items-end gap-1">
+                    <BadgeBadge level={m.badgeLevel} />
+                    <DeleteMemberButton uid={m.uid} name={m.name} />
+                  </div>
                 </div>
                 <p className="text-2xl font-bold text-indigo-600">{m.badgeScore}</p>
                 <p className="text-xs text-gray-400">累計スコア</p>

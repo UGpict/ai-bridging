@@ -3,7 +3,37 @@
     "allow": [
       "Bash(npm install *)",
       "Bash(npx tsc *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(gcloud run *)",
+      "Bash(gcloud projects *)",
+      "Bash(gcloud logging *)",
+      "Bash(python3 -c \"import sys,json; logs=json.load\\(sys.stdin\\); [print\\(l.get\\('textPayload',''\\)\\) for l in logs if l.get\\('textPayload'\\)]\")",
+      "Bash(gcloud builds *)",
+      "Bash(python3 -c \"import sys,json; b=json.load\\(sys.stdin\\); print\\(b.get\\('logUrl','no url'\\)\\); print\\('status:', b.get\\('status'\\)\\); steps=b.get\\('steps',[]\\); [print\\(f'Step {i}: {s.get\\(\\\\\"name\\\\\",\\\\\"\\\\\"\\)} - {s.get\\(\\\\\"status\\\\\",\\\\\"\\\\\"\\)}'\\) for i,s in enumerate\\(steps\\)]\")",
+      "Bash(python3 -c ' *)",
+      "Bash(gcloud artifacts repositories list *)",
+      "Bash(gcloud artifacts docker images *)",
+      "Bash(gcloud iam *)",
+      "Bash(grep -v \"^$\")",
+      "Bash(gsutil ls *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); steps=d.get\\('steps',[]\\); [print\\(f'Step {i}: {s.get\\(\\\\\"name\\\\\",\\\\\"\\\\\"\\)} status={s.get\\(\\\\\"status\\\\\",\\\\\"\\\\\"\\)}\\\\\\\\n  args={s.get\\(\\\\\"args\\\\\",[]\\)}\\\\\\\\n  timing={s.get\\(\\\\\"timing\\\\\",{}\\)}'\\) for i,s in enumerate\\(steps\\)]; print\\('\\\\\\\\nBuild status:', d.get\\('status'\\)\\); print\\('Failure:', d.get\\('failureInfo'\\)\\); print\\('Logs:', d.get\\('logUrl'\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('Steps count:', len\\(d.get\\('steps',[]\\)\\)\\); print\\(json.dumps\\(d, indent=2, default=str\\)\\)\")",
+      "Bash(Read C:\\\\Users\\\\zeak2\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-zeak2-hackson\\\\df5c96d1-299d-4053-abfd-acd38b74bfa3\\\\tasks\\\\bc12wbfkq.output)",
+      "Bash(curl *)",
+      "Bash(gcloud auth *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('signIn',{}\\).get\\('allowedDomains', d.get\\('authorizedDomains',[]\\)\\), indent=2\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(list\\(d.keys\\(\\)\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('authorizedDomains',[]\\), indent=2\\)\\)\")",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('authorizedDomains', d.get\\('error',d\\)\\), indent=2\\)\\)\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(npx next *)",
+      "Bash(firebase deploy *)",
+      "Bash(npx firebase-tools *)",
+      "Bash(python C:\\\\Users\\\\zeak2\\\\hackson\\\\scripts\\\\make_env_yaml.py)",
+      "Bash(python *)"
     ]
   }
 }

@@ -79,6 +79,7 @@ export interface SessionMessage {
 export interface Session {
   id: string;
   managerUid: string;
+  orgId?: string;
   originalInstruction: string;
   clarifiedTasks: ClarifiedTask[];
   assignmentProposal: Assignment[];

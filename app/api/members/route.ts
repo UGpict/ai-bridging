@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     await createUser(user);
 
     return Response.json({ uid });
-  } catch (error) {
+  } catch {
     return Response.json(
       { error: "エラーが発生しました" },
       { status: 500 }

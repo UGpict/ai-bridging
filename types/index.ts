@@ -3,7 +3,7 @@ import type { Timestamp } from "firebase-admin/firestore";
 export type BadgeLevel = "見習い" | "初級" | "中級" | "上級" | "エキスパート";
 export type UserRole = "manager" | "member";
 export type TaskStatus = "pending" | "submitted" | "evaluated";
-export type RequiredSkill = "documentation" | "communication" | "technical";
+export type RequiredSkill = "documentation" | "communication" | "technical" | "ci_cd";
 export type SessionStatus = "chatting" | "proposed" | "approved";
 export type TaskDeadline = "today" | "project";
 
@@ -26,6 +26,7 @@ export interface User {
     documentation: number;
     communication: number;
     technical: number;
+    ci_cd: number;
   };
   orgId?: string;
 }
@@ -41,6 +42,7 @@ export interface Task {
   status: TaskStatus;
   createdAt: Timestamp;
   submission?: string;
+  prUrl?: string;
   evaluation?: {
     breakdown: {
       requirement: number;

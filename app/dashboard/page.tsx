@@ -109,18 +109,30 @@ export default async function DashboardPage() {
                 <p className="text-2xl font-bold text-indigo-600">{m.badgeScore}</p>
                 <p className="text-xs text-gray-400">累計スコア</p>
                 <div className="mt-3 space-y-1">
-                  {(["documentation", "communication", "technical"] as const).map((sk) => (
-                    <div key={sk} className="flex items-center gap-2">
-                      <span className="text-xs text-gray-400 w-28">{sk}</span>
-                      <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                        <div
-                          className="bg-indigo-500 h-1.5 rounded-full"
-                          style={{ width: `${Math.min(100, m.skills[sk])}%` }}
-                        />
+                  {(
+                    [
+                      { key: "documentation", label: "資料作成" },
+                      { key: "communication", label: "調整・折衝" },
+                      { key: "technical", label: "技術" },
+                      { key: "ci_cd", label: "CI/CD" },
+                    ] as const
+                  ).map(({ key, label }) => {
+                    const score = m.skills[key] ?? 0;
+                    const growing = score > 50;
+                    return (
+                      <div key={key} className="flex items-center gap-2">
+                        <span className="text-xs text-gray-400 w-16 shrink-0">{label}</span>
+                        <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                          <div
+                            className={`h-1.5 rounded-full transition-all ${growing ? "bg-indigo-500" : "bg-gray-300"}`}
+                            style={{ width: `${Math.min(100, score)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs w-6 text-right text-gray-500">{score}</span>
+                        {growing && <span className="text-xs text-green-500">↑</span>}
                       </div>
-                      <span className="text-xs text-gray-500 w-6 text-right">{m.skills[sk]}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))}

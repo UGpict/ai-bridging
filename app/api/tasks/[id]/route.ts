@@ -35,7 +35,7 @@ export async function POST(request: Request, ctx: Ctx) {
 
     const decoded = await adminAuth.verifyIdToken(session.value);
     const { id } = await ctx.params;
-    const { submission } = (await request.json()) as { submission: string };
+    const { submission, prUrl } = (await request.json()) as { submission: string; prUrl?: string };
 
     if (!submission?.trim() || submission.length > 10000) {
       return Response.json({ error: "提出テキストは1〜10000文字で入力してください" }, { status: 400 });
@@ -49,7 +49,7 @@ export async function POST(request: Request, ctx: Ctx) {
       return Response.json({ error: "権限がありません" }, { status: 403 });
     }
 
-    await submitTask(id, submission);
+    await submitTask(id, submission, prUrl);
     const task = await getTask(id);
 
     return Response.json(task);

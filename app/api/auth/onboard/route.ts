@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         role: "manager",
         badgeScore: 0,
         badgeLevel: "見習い",
-        skills: { documentation: 50, communication: 50, technical: 50 },
+        skills: { documentation: 50, communication: 50, technical: 50, ci_cd: 50 },
         orgId: org.id,
       };
 
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         role: "member",
         badgeScore: 0,
         badgeLevel: "見習い",
-        skills: { documentation: 50, communication: 50, technical: 50 },
+        skills: { documentation: 50, communication: 50, technical: 50, ci_cd: 50 },
         orgId: org.id,
       };
 

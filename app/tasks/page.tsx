@@ -57,17 +57,24 @@ export default async function TasksPage() {
             <div className="flex-1 pt-2">
               <p className="text-xs font-medium text-gray-500 mb-3">スキルスコア</p>
               <div className="space-y-3">
-                {(["documentation", "communication", "technical"] as const).map((sk) => (
-                  <div key={sk} className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500 w-24 shrink-0 capitalize">{sk}</span>
+                {(
+                  [
+                    { key: "documentation", label: "資料作成" },
+                    { key: "communication", label: "調整・折衝" },
+                    { key: "technical", label: "技術" },
+                    { key: "ci_cd", label: "CI/CD" },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <div key={key} className="flex items-center gap-3">
+                    <span className="text-xs text-gray-500 w-24 shrink-0">{label}</span>
                     <div className="flex-1 bg-gray-100 rounded-full h-2">
                       <div
                         className="bg-indigo-500 h-2 rounded-full transition-all duration-700"
-                        style={{ width: `${Math.min(100, user.skills[sk])}%` }}
+                        style={{ width: `${Math.min(100, user.skills[key] ?? 0)}%` }}
                       />
                     </div>
                     <span className="text-xs text-gray-600 w-6 text-right font-mono">
-                      {user.skills[sk]}
+                      {user.skills[key] ?? 0}
                     </span>
                   </div>
                 ))}

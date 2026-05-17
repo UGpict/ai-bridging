@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const { name, email, skills } = (await request.json()) as {
       name: string;
       email: string;
-      skills: { documentation: number; communication: number; technical: number };
+      skills: { documentation: number; communication: number; technical: number; ci_cd: number };
     };
 
     const badgeScore = 0;

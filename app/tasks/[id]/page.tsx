@@ -10,6 +10,7 @@ export default function TaskDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [task, setTask] = useState<Task | null>(null);
   const [submission, setSubmission] = useState("");
+  const [prUrl, setPrUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [evaluating, setEvaluating] = useState(false);
@@ -31,6 +32,7 @@ export default function TaskDetailPage() {
         const taskData = (await taskRes.json()) as Task;
         setTask(taskData);
         if (taskData.submission) setSubmission(taskData.submission);
+        if (taskData.prUrl) setPrUrl(taskData.prUrl);
         if (userRes.ok) {
           const userData = (await userRes.json()) as { badgeLevel: BadgeLevel };
           setPrevLevel(userData.badgeLevel);
@@ -52,7 +54,7 @@ export default function TaskDetailPage() {
       const res = await fetch(`/api/tasks/${id}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submission }),
+        body: JSON.stringify({ submission, prUrl: prUrl.trim() || undefined }),
       });
       if (!res.ok) throw new Error("提出に失敗しました");
       const updated = (await res.json()) as Task;
@@ -181,6 +183,30 @@ export default function TaskDetailPage() {
               {error}
             </div>
           )}
+          <div className="mb-3">
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              GitHub PR / Issue URL（任意）
+            </label>
+            {isEvaluated && task.prUrl ? (
+              <a
+                href={task.prUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-indigo-600 underline break-all"
+              >
+                {task.prUrl}
+              </a>
+            ) : (
+              <input
+                type="url"
+                value={prUrl}
+                onChange={(e) => setPrUrl(e.target.value)}
+                disabled={isEvaluated || submitting || evaluating}
+                placeholder="https://github.com/org/repo/pull/123"
+                className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50 disabled:text-gray-400"
+              />
+            )}
+          </div>
           <textarea
             value={submission}
             onChange={(e) => setSubmission(e.target.value)}

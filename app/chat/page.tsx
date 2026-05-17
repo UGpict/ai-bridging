@@ -14,6 +14,12 @@ interface ChatMessage {
 type Phase = "chatting" | "assigning" | "assigned";
 type Mode = "project" | "today";
 
+interface MemberScore {
+  uid: string;
+  name: string;
+  skills: Record<string, number>;
+}
+
 interface AssignResult {
   task: ClarifiedTask;
   assignment: Assignment;
@@ -30,6 +36,7 @@ export default function ChatPage() {
   const [phase, setPhase] = useState<Phase>("chatting");
   const [tasks, setTasks] = useState<ClarifiedTask[]>([]);
   const [assignments, setAssignments] = useState<AssignResult[]>([]);
+  const [memberScores, setMemberScores] = useState<MemberScore[]>([]);
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -48,6 +55,7 @@ export default function ChatPage() {
     setPhase("chatting");
     setTasks([]);
     setAssignments([]);
+    setMemberScores([]);
   };
 
   useEffect(() => {
@@ -118,6 +126,7 @@ export default function ChatPage() {
       });
       const data = (await res.json()) as {
         assignments?: Assignment[];
+        memberScores?: MemberScore[];
         error?: string;
       };
       if (!res.ok) throw new Error(data.error ?? "推薦に失敗しました");
@@ -127,6 +136,7 @@ export default function ChatPage() {
         assignment: data.assignments![i] ?? data.assignments![0],
       }));
       setAssignments(results);
+      setMemberScores(data.memberScores ?? []);
       setPhase("assigned");
     } catch (e) {
       setMessages((prev) => [
@@ -162,6 +172,7 @@ export default function ChatPage() {
     documentation: "資料作成",
     communication: "コミュニケーション",
     technical: "技術",
+    ci_cd: "CI/CD",
   };
 
   return (
@@ -259,18 +270,43 @@ export default function ChatPage() {
                 )}
               </div>
               <div className="space-y-4">
-                {assignments.map((a, i) => (
-                  <div key={i} className="border border-gray-100 rounded-lg p-3">
-                    <p className="text-xs font-medium text-gray-500 mb-1">
-                      {skillLabel[a.task.requiredSkill] ?? a.task.requiredSkill}
-                    </p>
-                    <p className="text-sm font-semibold text-gray-900">{a.task.title}</p>
-                    <p className="text-sm text-indigo-600 mt-1">
-                      {a.assignment.assigneeName}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">{a.assignment.reason}</p>
-                  </div>
-                ))}
+                {assignments.map((a, i) => {
+                  const skill = a.task.requiredSkill;
+                  const ranked = [...memberScores]
+                    .sort((x, y) => (y.skills[skill] ?? 0) - (x.skills[skill] ?? 0));
+                  const maxScore = ranked[0]?.skills[skill] ?? 1;
+                  return (
+                    <div key={i} className="border border-gray-100 rounded-lg p-3">
+                      <p className="text-xs font-medium text-gray-500 mb-1">
+                        {skillLabel[skill] ?? skill}
+                      </p>
+                      <p className="text-sm font-semibold text-gray-900">{a.task.title}</p>
+                      <p className="text-xs text-gray-400 mt-1">{a.assignment.reason}</p>
+                      {ranked.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {ranked.map((m) => {
+                            const s = m.skills[skill] ?? 0;
+                            const isAssigned = m.uid === a.assignment.assigneeUid;
+                            return (
+                              <div key={m.uid} className="flex items-center gap-2">
+                                <span className={`text-xs w-16 truncate ${isAssigned ? "font-bold text-indigo-600" : "text-gray-400"}`}>
+                                  {isAssigned ? "▶ " : ""}{m.name}
+                                </span>
+                                <div className="flex-1 bg-gray-100 rounded-full h-1.5">
+                                  <div
+                                    className={`h-1.5 rounded-full ${isAssigned ? "bg-indigo-500" : "bg-gray-300"}`}
+                                    style={{ width: `${(s / Math.max(maxScore, 1)) * 100}%` }}
+                                  />
+                                </div>
+                                <span className={`text-xs w-6 text-right ${isAssigned ? "text-indigo-600 font-bold" : "text-gray-400"}`}>{s}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <button
                 onClick={handleApprove}

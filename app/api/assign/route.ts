@@ -66,7 +66,13 @@ ${membersJson}
 
     await updateSessionWithTasks(sessionId, tasks, assignments);
 
-    return Response.json({ assignments });
+    const memberScores = members.map((m) => ({
+      uid: m.uid,
+      name: m.name,
+      skills: m.skills,
+    }));
+
+    return Response.json({ assignments, memberScores });
   } catch (error) {
     return Response.json(
       { error: "エラーが発生しました" },

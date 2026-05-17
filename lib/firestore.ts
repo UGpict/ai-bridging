@@ -96,12 +96,12 @@ export async function createTask(
 
 export async function submitTask(
   taskId: string,
-  submission: string
+  submission: string,
+  prUrl?: string
 ): Promise<void> {
-  await adminDb.collection("tasks").doc(taskId).update({
-    status: "submitted",
-    submission,
-  });
+  const data: Record<string, string> = { status: "submitted", submission };
+  if (prUrl) data.prUrl = prUrl;
+  await adminDb.collection("tasks").doc(taskId).update(data);
 }
 
 export async function evaluateTask(

@@ -37,6 +37,7 @@ export interface Task {
   description: string;
   requiredSkill?: RequiredSkill;
   deadline?: TaskDeadline;
+  orgId?: string;
   assigneeUid: string;
   assigneeName: string;
   status: TaskStatus;

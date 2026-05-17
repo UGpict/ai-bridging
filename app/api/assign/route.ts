@@ -2,6 +2,7 @@ import { adminAuth } from "@/lib/firebaseAdmin";
 import {
   getAllMembers,
   getSession,
+  getOrganizationByManager,
   updateSessionWithTasks,
   approveSession,
   createTask,
@@ -30,7 +31,8 @@ export async function POST(request: Request) {
       return Response.json({ error: "権限がありません" }, { status: 403 });
     }
 
-    const members = await getAllMembers();
+    const org = await getOrganizationByManager(decoded.uid);
+    const members = await getAllMembers(org?.id);
     if (members.length === 0) {
       return Response.json({ error: "メンバーが登録されていません" }, { status: 400 });
     }
@@ -99,11 +101,16 @@ export async function PUT(request: Request) {
     if (sessionData.managerUid !== decodedPut.uid) {
       return Response.json({ error: "権限がありません" }, { status: 403 });
     }
+    if (sessionData.status === "approved") {
+      return Response.json({ error: "既に承認済みです" }, { status: 409 });
+    }
 
-    for (const assignment of sessionData.assignmentProposal) {
-      const task = sessionData.clarifiedTasks.find(
-        (t) => t.title === assignment.taskTitle
-      );
+    const managerOrg = await getOrganizationByManager(sessionData.managerUid);
+    for (let i = 0; i < sessionData.assignmentProposal.length; i++) {
+      const assignment = sessionData.assignmentProposal[i];
+      const task =
+        sessionData.clarifiedTasks[i] ??
+        sessionData.clarifiedTasks.find((t) => t.title === assignment.taskTitle);
       if (!task) continue;
 
       await createTask({
@@ -111,6 +118,7 @@ export async function PUT(request: Request) {
         description: task.description,
         requiredSkill: task.requiredSkill,
         deadline: task.deadline,
+        orgId: managerOrg?.id,
         assigneeUid: assignment.assigneeUid,
         assigneeName: assignment.assigneeName,
         status: "pending",

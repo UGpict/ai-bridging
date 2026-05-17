@@ -38,6 +38,12 @@ export async function POST(request: Request) {
     if (task.assigneeUid !== decoded.uid) {
       return Response.json({ error: "権限がありません" }, { status: 403 });
     }
+    if (task.status === "evaluated") {
+      return Response.json({ error: "既に評価済みです" }, { status: 409 });
+    }
+    if (task.status !== "submitted") {
+      return Response.json({ error: "提出されていないタスクは評価できません" }, { status: 400 });
+    }
 
     const prompt = `以下のタスクの要件と、部下が提出したテキストを照合し、採点してください。
 

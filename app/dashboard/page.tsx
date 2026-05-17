@@ -52,10 +52,10 @@ export default async function DashboardPage() {
   const user = await getUser(uid);
   if (!user || user.role !== "manager") redirect("/tasks");
 
-  const [tasks, members, org] = await Promise.all([
-    getAllTasks(),
-    getAllMembers(),
-    getOrganizationByManager(uid),
+  const org = await getOrganizationByManager(uid);
+  const [tasks, members] = await Promise.all([
+    getAllTasks(org?.id),
+    getAllMembers(org?.id),
   ]);
 
   const stats = {

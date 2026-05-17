@@ -48,6 +48,9 @@ export async function POST(request: Request, ctx: Ctx) {
     if (existing.assigneeUid !== decoded.uid) {
       return Response.json({ error: "権限がありません" }, { status: 403 });
     }
+    if (existing.status !== "pending") {
+      return Response.json({ error: "既に提出済みまたは評価済みです" }, { status: 409 });
+    }
 
     await submitTask(id, submission, prUrl);
     const task = await getTask(id);

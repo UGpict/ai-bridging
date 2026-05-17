@@ -1,5 +1,5 @@
 import { adminAuth } from "@/lib/firebaseAdmin";
-import { createUser, getUser } from "@/lib/firestore";
+import { createUser, getUser, getOrganizationByManager } from "@/lib/firestore";
 import { cookies } from "next/headers";
 import { randomUUID } from "crypto";
 import type { User } from "@/types";
@@ -24,8 +24,7 @@ export async function POST(request: Request) {
       skills: { documentation: number; communication: number; technical: number; ci_cd: number };
     };
 
-    const badgeScore = 0;
-    const badgeLevel = "見習い";
+    const org = await getOrganizationByManager(decoded.uid);
     const uid = randomUUID();
 
     const user: User = {
@@ -33,9 +32,10 @@ export async function POST(request: Request) {
       name,
       email,
       role: "member",
-      badgeScore,
-      badgeLevel,
+      badgeScore: 0,
+      badgeLevel: "見習い",
       skills,
+      orgId: org?.id,
     };
 
     await createUser(user);

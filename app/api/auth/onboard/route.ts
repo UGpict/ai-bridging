@@ -1,5 +1,5 @@
 import { adminAuth } from "@/lib/firebaseAdmin";
-import { createUser, createOrganization, getOrganizationByCode } from "@/lib/firestore";
+import { createUser, getUser, createOrganization, getOrganizationByCode } from "@/lib/firestore";
 import { cookies } from "next/headers";
 import type { User, Organization } from "@/types";
 
@@ -20,6 +20,11 @@ export async function POST(request: Request) {
     const uid = decoded.uid;
     const displayName = decoded.name ?? decoded.email ?? uid;
     const email = decoded.email ?? "";
+
+    const existing = await getUser(uid);
+    if (existing) {
+      return Response.json({ role: existing.role });
+    }
 
     const { action, teamName, inviteCode } = (await request.json()) as {
       action: string;

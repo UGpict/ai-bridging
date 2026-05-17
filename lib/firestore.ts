@@ -10,11 +10,10 @@ export async function getUser(uid: string): Promise<User | null> {
   return doc.data() as User;
 }
 
-export async function getAllMembers(): Promise<User[]> {
-  const snap = await adminDb
-    .collection("users")
-    .where("role", "==", "member")
-    .get();
+export async function getAllMembers(orgId?: string): Promise<User[]> {
+  let query = adminDb.collection("users").where("role", "==", "member");
+  if (orgId) query = query.where("orgId", "==", orgId) as typeof query;
+  const snap = await query.get();
   return snap.docs.map((d) => d.data() as User);
 }
 
@@ -79,11 +78,10 @@ export async function getTasksByAssignee(uid: string): Promise<Task[]> {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
 }
 
-export async function getAllTasks(): Promise<Task[]> {
-  const snap = await adminDb
-    .collection("tasks")
-    .orderBy("createdAt", "desc")
-    .get();
+export async function getAllTasks(orgId?: string): Promise<Task[]> {
+  let query = adminDb.collection("tasks").orderBy("createdAt", "desc");
+  if (orgId) query = query.where("orgId", "==", orgId) as typeof query;
+  const snap = await query.get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Task);
 }
 

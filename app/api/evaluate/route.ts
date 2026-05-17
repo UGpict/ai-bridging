@@ -80,9 +80,11 @@ ${task.submission}
 
     const skillField: RequiredSkill =
       task.requiredSkill ??
-      (task.description.includes("documentation")
+      (task.description.includes("ci_cd") || task.description.toLowerCase().includes("ci/cd") || task.description.includes("デプロイ") || task.description.includes("パイプライン")
+        ? "ci_cd"
+        : task.description.includes("documentation") || task.description.includes("資料") || task.description.includes("ドキュメント")
         ? "documentation"
-        : task.description.includes("communication")
+        : task.description.includes("communication") || task.description.includes("調整") || task.description.includes("連絡")
         ? "communication"
         : "technical");
 

@@ -9,7 +9,7 @@ export default function AddMemberButton() {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [skills, setSkills] = useState({ documentation: 50, communication: 50, technical: 50 });
+  const [skills, setSkills] = useState({ documentation: 50, communication: 50, technical: 50, ci_cd: 50 });
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
@@ -24,7 +24,7 @@ export default function AddMemberButton() {
       setOpen(false);
       setName("");
       setEmail("");
-      setSkills({ documentation: 50, communication: 50, technical: 50 });
+      setSkills({ documentation: 50, communication: 50, technical: 50, ci_cd: 50 });
       router.refresh();
     } catch (e) {
       alert(e instanceof Error ? e.message : "エラーが発生しました");
@@ -67,18 +67,25 @@ export default function AddMemberButton() {
                 />
               </div>
 
-              {(["documentation", "communication", "technical"] as const).map((sk) => (
-                <div key={sk}>
+              {(
+                [
+                  { key: "documentation", label: "資料作成" },
+                  { key: "communication", label: "調整・折衝" },
+                  { key: "technical", label: "技術" },
+                  { key: "ci_cd", label: "CI/CD" },
+                ] as const
+              ).map(({ key, label }) => (
+                <div key={key}>
                   <label className="text-sm font-medium text-gray-700 flex justify-between">
-                    <span>{sk}</span>
-                    <span className="text-indigo-600">{skills[sk]}</span>
+                    <span>{label}</span>
+                    <span className="text-indigo-600">{skills[key]}</span>
                   </label>
                   <input
                     type="range"
                     min={0}
                     max={100}
-                    value={skills[sk]}
-                    onChange={(e) => setSkills((prev) => ({ ...prev, [sk]: Number(e.target.value) }))}
+                    value={skills[key]}
+                    onChange={(e) => setSkills((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
                     className="mt-1 w-full accent-indigo-600"
                   />
                 </div>

@@ -254,6 +254,100 @@
 
 ---
 
+## Gemini レート制限とリトライ戦略
+
+Vertex AI の `gemini-3.1-flash-lite` には QPM（クエリ/分）制限がある。デモ中に 429 が出ると致命的。
+
+### 現状の実装
+`lib/gemini.ts` にリトライロジックは**未実装**。429 は API Route の `catch` で 500 として返る。
+
+### デモ対策（優先度順）
+1. **デモ前にウォームアップしない** — デモ直前に大量テストをしない
+2. **チャット送信を連打しない** — UI の `disabled={loading}` が保護しているが念のため
+3. **429 が出たら** — 30〜60秒待ってリトライ。Vertex AI のリセット間隔は1分単位
+
+### リトライを実装するなら（必要になったら追加）
+`lib/gemini.ts` の呼び出しを以下のパターンでラップする：
+```ts
+// 最大3回、exponential backoff（1s → 2s → 4s）
+for (let i = 0; i < 3; i++) {
+  try { return await generateContent(prompt); }
+  catch (e) {
+    if (i === 2 || !isRateLimitError(e)) throw e;
+    await new Promise(r => setTimeout(r, 1000 * 2 ** i));
+  }
+}
+```
+
+---
+
+## スキルスコアの初期値と推薦ロジック
+
+### 初期値
+オンボーディング時に全員 `skills: { documentation: 0, communication: 0, technical: 0 }` で作成される。**全員0の状態では推薦が機能しない**（AI が任意に選ぶだけ）。
+
+### デモ前の必須作業
+Firestore コンソール（`users/{uid}`）でメンバーのスキルスコアを手動設定する。デモ用の差をつけた例：
+
+| メンバー | documentation | communication | technical |
+|---|---|---|---|
+| Aさん | 80 | 30 | 20 |
+| Bさん | 20 | 80 | 30 |
+| Cさん | 30 | 20 | 80 |
+
+### スコア更新ロジック（評価後）
+`/api/evaluate` → `updateUserBadge()` で以下を更新：
+- `badgeScore` += `delta`（0〜30の範囲）
+- `skills.{requiredSkill}` += `delta`（スキル別も同時加算）
+- `badgeLevel` は `badgeScore` の閾値で再計算
+
+### 将来的な改善（デモ後）
+オンボーディング画面でスキルを自己申告させる（スライダーなど）か、初期値を均等値（例: 各50）に変更する。
+
+---
+
+## Firestore セキュリティルール
+
+### 現状の方針
+**Firestore への全アクセスは Firebase Admin SDK（サーバーサイド）経由のみ。**
+クライアント SDK は Firebase Authentication の認証のみに使用し、Firestore への直接読み書きは行っていない。
+
+### 推奨ルール（Firestore コンソールで設定）
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+クライアントから直接アクセスする実装を追加する場合は必ずルールを見直すこと。
+
+---
+
+## Cloud Run ロールバック手順
+
+### 直前デプロイが壊れた場合
+```bash
+# リビジョン一覧を確認
+gcloud run revisions list --service ai-bridging --region asia-northeast1
+
+# 前のリビジョンに100%切り戻し（例: ai-bridging-00004-ndq）
+gcloud run services update-traffic ai-bridging \
+  --to-revisions=ai-bridging-00004-ndq=100 \
+  --region asia-northeast1
+```
+切り戻しは **30秒以内**に完了する。
+
+### デモ直前のデプロイ禁止ライン
+**デモ開始30分前以降は新規デプロイしない。** 動いているリビジョンのURLをブックマークしておくこと。
+
+現行リビジョン: `ai-bridging-00005-jrb`（2026-05-17時点）
+
+---
+
 ## バッジレベル定義
 
 | レベル | スコア範囲 |

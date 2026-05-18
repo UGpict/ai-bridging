@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
 import {
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
@@ -12,7 +13,7 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -34,20 +35,29 @@ export default function LoginPage() {
     return (await res.json()) as { role: string };
   };
 
+  // Googleリダイレクト後の結果を処理
+  useEffect(() => {
+    getRedirectResult(getFirebaseAuth())
+      .then(async (result) => {
+        if (result) {
+          const idToken = await result.user.getIdToken();
+          const data = await postSession(idToken);
+          redirectByRole(data.role);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : "ログインに失敗しました");
+        setLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleGoogleLogin = async () => {
-    setLoading(true);
     setError("");
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(getFirebaseAuth(), provider);
-      const idToken = await result.user.getIdToken();
-      const data = await postSession(idToken);
-      redirectByRole(data.role);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "ログインに失敗しました");
-    } finally {
-      setLoading(false);
-    }
+    const provider = new GoogleAuthProvider();
+    await signInWithRedirect(getFirebaseAuth(), provider);
   };
 
   const handleEmailAuth = async () => {
@@ -73,10 +83,17 @@ export default function LoginPage() {
       } else {
         setError(e instanceof Error ? e.message : "ログインに失敗しました");
       }
-    } finally {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <p className="text-sm text-gray-400">読み込み中...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -116,10 +133,10 @@ export default function LoginPage() {
           />
           <button
             onClick={handleEmailAuth}
-            disabled={loading || !email.trim() || !password.trim()}
+            disabled={!email.trim() || !password.trim()}
             className="w-full bg-indigo-600 text-white rounded-xl px-6 py-3 font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? "処理中..." : isSignUp ? "アカウント作成" : "ログイン"}
+            {isSignUp ? "アカウント作成" : "ログイン"}
           </button>
           <p className="text-center text-xs text-gray-500">
             {isSignUp ? "すでにアカウントをお持ちですか？" : "アカウントをお持ちでない方は"}
@@ -140,13 +157,12 @@ export default function LoginPage() {
 
         <button
           onClick={handleGoogleLogin}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-xl px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-xl px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm"
         >
           <svg width="20" height="20" viewBox="0 0 48 48">
             <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
           </svg>
-          {loading ? "処理中..." : "Googleでログイン"}
+          Googleでログイン
         </button>
       </div>
     </div>

@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getFirebaseAuth } from "@/lib/firebase";
 import {
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
@@ -13,7 +12,7 @@ import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,29 +34,25 @@ export default function LoginPage() {
     return (await res.json()) as { role: string };
   };
 
-  // Googleリダイレクト後の結果を処理
-  useEffect(() => {
-    getRedirectResult(getFirebaseAuth())
-      .then(async (result) => {
-        if (result) {
-          const idToken = await result.user.getIdToken();
-          const data = await postSession(idToken);
-          redirectByRole(data.role);
-        } else {
-          setLoading(false);
-        }
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : "ログインに失敗しました");
-        setLoading(false);
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleGoogleLogin = async () => {
+    setLoading(true);
     setError("");
-    const provider = new GoogleAuthProvider();
-    await signInWithRedirect(getFirebaseAuth(), provider);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(getFirebaseAuth(), provider);
+      const idToken = await result.user.getIdToken();
+      const data = await postSession(idToken);
+      redirectByRole(data.role);
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === "auth/popup-blocked") {
+        setError("ポップアップがブロックされました。上のメール/パスワードでログインしてください。");
+      } else {
+        setError(e instanceof Error ? e.message : "ログインに失敗しました");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEmailAuth = async () => {
@@ -86,14 +81,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <p className="text-sm text-gray-400">読み込み中...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">

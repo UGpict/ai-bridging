@@ -336,7 +336,7 @@ gcloud run services update-traffic ai-bridging \
 ### デモ直前のデプロイ禁止ライン
 **デモ開始30分前以降は新規デプロイしない。** 動いているリビジョンのURLをブックマークしておくこと。
 
-現行リビジョン: `ai-bridging-00011-k89`（2026-05-17時点、最新変更はまだデプロイ未済）
+現行リビジョン: `ai-bridging-00014-m8v`（2026-05-18時点）
 
 ---
 
@@ -457,4 +457,4 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=ai-bridging
 - [x] Geminiリトライロジック（最大3回 exponential backoff）
 - [x] セッション（sessions）にorgIdを付与・型定義に追加
 - [x] lint warnings 全解消（未使用import・catch変数・未使用state）
-- [ ] Cloud Runデプロイ（最新版、メール認証・メンバー削除含む）
+- [x] Cloud Runデプロイ（最新版、メール認証・メンバー削除含む）

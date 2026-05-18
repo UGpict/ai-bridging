@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { getFirebaseAuth } from "@/lib/firebase";
 import {
   GoogleAuthProvider,
@@ -46,7 +47,7 @@ export default function LoginPage() {
     } catch (e) {
       const code = (e as { code?: string }).code;
       if (code === "auth/popup-blocked") {
-        setError("ポップアップがブロックされました。上のメール/パスワードでログインしてください。");
+        setError("ポップアップがブロックされました。メール/パスワードをご利用ください。");
       } else {
         setError(e instanceof Error ? e.message : "ログインに失敗しました");
       }
@@ -78,79 +79,110 @@ export default function LoginPage() {
       } else {
         setError(e instanceof Error ? e.message : "ログインに失敗しました");
       }
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-sm flex flex-col items-center gap-6">
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">
-            TL
+    <div className="min-h-screen flex">
+      {/* Left: Brand panel */}
+      <div className="hidden lg:flex flex-1 flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative overflow-hidden p-12">
+        <div className="absolute inset-0 bg-black/10" />
+        <div className="relative z-10 w-full max-w-md">
+          <Image
+            src="/logo.webp"
+            alt="TascaLL"
+            width={480}
+            height={320}
+            className="rounded-2xl shadow-2xl w-full object-cover object-center"
+            style={{ maxHeight: 320 }}
+            priority
+          />
+          <div className="mt-8 text-white">
+            <h2 className="text-3xl font-black tracking-tight">TascaLL</h2>
+            <p className="mt-2 text-white/80 text-base leading-relaxed">
+              曖昧な指示をAIが構造化し、<br />バッジスコアで最適なメンバーに自動割り振り
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">TascaLL</h1>
-          <p className="text-sm text-gray-500 text-center">
-            曖昧な指示をAIが構造化し、<br />最適なメンバーに自動割り振り
-          </p>
         </div>
+      </div>
 
-        {error && (
-          <div className="w-full bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-            {error}
+      {/* Right: Login form */}
+      <div className="flex flex-1 items-center justify-center bg-gray-50 px-6 py-12">
+        <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm flex flex-col gap-6">
+          {/* Mobile logo */}
+          <div className="flex lg:hidden flex-col items-center gap-2">
+            <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-md">
+              TL
+            </div>
+            <h1 className="text-xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+              TascaLL
+            </h1>
           </div>
-        )}
 
-        {/* Email/Password */}
-        <div className="w-full space-y-3">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="メールアドレス"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="パスワード（6文字以上）"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            onKeyDown={(e) => { if (e.key === "Enter") handleEmailAuth(); }}
-          />
-          <button
-            onClick={handleEmailAuth}
-            disabled={!email.trim() || !password.trim()}
-            className="w-full bg-indigo-600 text-white rounded-xl px-6 py-3 font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSignUp ? "アカウント作成" : "ログイン"}
-          </button>
-          <p className="text-center text-xs text-gray-500">
-            {isSignUp ? "すでにアカウントをお持ちですか？" : "アカウントをお持ちでない方は"}
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">ログイン</h2>
+            <p className="text-sm text-gray-500 mt-0.5">アカウントにアクセス</p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="メールアドレス"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 focus:bg-white transition-colors"
+            />
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="パスワード（6文字以上）"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50 focus:bg-white transition-colors"
+              onKeyDown={(e) => { if (e.key === "Enter") handleEmailAuth(); }}
+            />
             <button
-              onClick={() => { setIsSignUp(!isSignUp); setError(""); }}
-              className="ml-1 text-indigo-600 hover:underline"
+              onClick={handleEmailAuth}
+              disabled={loading || !email.trim() || !password.trim()}
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl px-6 py-3 font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
-              {isSignUp ? "ログイン" : "新規登録"}
+              {loading ? "処理中..." : isSignUp ? "アカウント作成" : "ログイン"}
             </button>
-          </p>
-        </div>
+            <p className="text-center text-xs text-gray-500">
+              {isSignUp ? "すでにアカウントをお持ちですか？" : "アカウントをお持ちでない方は"}
+              <button
+                onClick={() => { setIsSignUp(!isSignUp); setError(""); }}
+                className="ml-1 text-indigo-600 hover:underline font-medium"
+              >
+                {isSignUp ? "ログイン" : "新規登録"}
+              </button>
+            </p>
+          </div>
 
-        <div className="w-full flex items-center gap-3">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-xs text-gray-400">または</span>
-          <div className="flex-1 h-px bg-gray-200" />
-        </div>
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400">または</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
 
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-3 bg-white border border-gray-300 rounded-xl px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm"
-        >
-          <svg width="20" height="20" viewBox="0 0 48 48">
-            <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
-          </svg>
-          Googleでログイン
-        </button>
+          <button
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-xl px-6 py-3 text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50 shadow-sm"
+          >
+            <svg width="18" height="18" viewBox="0 0 48 48">
+              <path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/>
+            </svg>
+            Googleでログイン
+          </button>
+        </div>
       </div>
     </div>
   );

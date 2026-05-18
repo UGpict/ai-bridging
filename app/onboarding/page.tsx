@@ -79,13 +79,13 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
       <div className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-md flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-lg font-bold">
+          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center text-white text-lg font-black shadow-md">
             TL
           </div>
-          <h1 className="text-xl font-bold text-gray-900">TascaLL へようこそ</h1>
+          <h1 className="text-xl font-black bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">TascaLL へようこそ</h1>
         </div>
 
         {step === "loading" && (
@@ -146,7 +146,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleCreate}
                 disabled={loading || !teamName.trim()}
-                className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {loading ? "作成中..." : "チームを作成"}
               </button>
@@ -184,7 +184,7 @@ export default function OnboardingPage() {
               <button
                 onClick={handleJoin}
                 disabled={loading || inviteCode.length < 6}
-                className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
               >
                 {loading ? "参加中..." : "チームに参加"}
               </button>
@@ -213,7 +213,7 @@ export default function OnboardingPage() {
             </button>
             <button
               onClick={() => router.push("/dashboard")}
-              className="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
+              className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90"
             >
               ダッシュボードへ
             </button>

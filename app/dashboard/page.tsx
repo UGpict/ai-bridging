@@ -79,14 +79,14 @@ export default async function DashboardPage() {
         {/* Stats */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "総タスク", value: stats.total, color: "text-gray-900" },
-            { label: "進行中", value: stats.pending, color: "text-blue-600" },
-            { label: "提出済", value: stats.submitted, color: "text-yellow-600" },
-            { label: "評価済", value: stats.evaluated, color: "text-green-600" },
+            { label: "総タスク", value: stats.total, gradient: "from-gray-700 to-gray-900", bg: "bg-gray-50" },
+            { label: "進行中",   value: stats.pending,   gradient: "from-indigo-500 to-blue-600",   bg: "bg-indigo-50" },
+            { label: "提出済",   value: stats.submitted, gradient: "from-amber-500 to-orange-500",  bg: "bg-amber-50" },
+            { label: "評価済",   value: stats.evaluated, gradient: "from-emerald-500 to-green-600", bg: "bg-emerald-50" },
           ].map((s) => (
-            <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-5">
-              <p className="text-sm text-gray-500">{s.label}</p>
-              <p className={`text-3xl font-bold mt-1 ${s.color}`}>{s.value}</p>
+            <div key={s.label} className={`${s.bg} rounded-xl border border-gray-100 p-5 shadow-sm`}>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</p>
+              <p className={`text-3xl font-black mt-1 bg-gradient-to-r ${s.gradient} bg-clip-text text-transparent`}>{s.value}</p>
             </div>
           ))}
         </div>

@@ -219,9 +219,9 @@ export default function TaskDetailPage() {
             <button
               onClick={handleSubmit}
               disabled={!submission.trim() || submitting || evaluating}
-              className="mt-3 w-full bg-indigo-600 text-white py-3 rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
+              className="mt-3 w-full bg-gradient-to-r from-indigo-500 to-purple-600 text-white py-3 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
             >
-              {evaluating ? "AIが評価中..." : submitting ? "提出中..." : "提出してAI評価を受ける"}
+              {evaluating ? "✨ AIが評価中..." : submitting ? "提出中..." : "提出してAI評価を受ける →"}
             </button>
           )}
         </div>

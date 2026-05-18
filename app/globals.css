@@ -10,6 +10,14 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* TascaLL brand — Gemini-inspired */
+  --color-brand-50:  #f0f0ff;
+  --color-brand-100: #e0e0fe;
+  --color-brand-200: #c4b5fd;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
 }
 
 @media (prefers-color-scheme: dark) {

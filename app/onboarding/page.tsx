@@ -83,9 +83,9 @@ export default function OnboardingPage() {
       <div className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-md flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
           <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-lg font-bold">
-            AI
+            TL
           </div>
-          <h1 className="text-xl font-bold text-gray-900">AI Bridging へようこそ</h1>
+          <h1 className="text-xl font-bold text-gray-900">TascaLL へようこそ</h1>
         </div>
 
         {step === "loading" && (

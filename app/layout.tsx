@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Bridging",
+  title: "TascaLL",
   description: "曖昧な指示をAIが構造化し、最適なメンバーに自動割り振りするDevOps支援アプリ",
 };
 

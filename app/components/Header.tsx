@@ -19,7 +19,7 @@ interface HeaderProps {
 }
 
 export default function Header({
-  pageTitle = "AI Bridging",
+  pageTitle = "TascaLL",
   userName,
   badgeInfo,
   backHref,
@@ -37,7 +37,7 @@ export default function Header({
           </Link>
         ) : (
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white text-sm font-bold select-none">
-            AI
+            TL
           </div>
         )}
         <h1 className="text-lg font-semibold text-gray-900">{pageTitle}</h1>

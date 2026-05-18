@@ -1,5 +1,5 @@
 @AGENTS.md
-# AI Bridging — CLAUDE.md
+# TascaLL — CLAUDE.md
 
 > このファイルはClaude Codeへの指示の唯一の参照元。実装前に必ず読むこと。
 
@@ -7,7 +7,7 @@
 
 ## プロジェクト概要
 
-**AI Bridging** — 上司の曖昧な指示をGeminiが構造化・複数タスクに分解し、バッジスコアに基づいて最適な部下に自動割り振りするDevOps支援Webアプリ。
+**TascaLL** — 上司の曖昧な指示をGeminiが構造化・複数タスクに分解し、バッジスコアに基づいて最適な部下に自動割り振りするDevOps支援Webアプリ。（旧称: AI Bridging）
 
 - ハッカソン: ファインディ × Google Cloud Japan「DevOps × AI Agent Hackathon」
 - 締切: 2025年7月10日 / 決勝: 2025年8月19日（渋谷）

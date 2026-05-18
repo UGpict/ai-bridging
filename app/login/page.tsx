@@ -83,9 +83,9 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-xl p-10 w-full max-w-sm flex flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-2">
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">
-            AI
+            TL
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">AI Bridging</h1>
+          <h1 className="text-2xl font-bold text-gray-900">TascaLL</h1>
           <p className="text-sm text-gray-500 text-center">
             曖昧な指示をAIが構造化し、<br />最適なメンバーに自動割り振り
           </p>

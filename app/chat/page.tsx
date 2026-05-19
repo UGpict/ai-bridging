@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import type { ClarifiedTask, Assignment } from "@/types";
-import Header from "@/app/components/Header";
+import Sidebar from "@/app/components/Sidebar";
 
 type MessageRole = "user" | "assistant";
 interface ChatMessage {
@@ -26,7 +25,6 @@ interface AssignResult {
 }
 
 export default function ChatPage() {
-  const router = useRouter();
   const [mode, setMode] = useState<Mode>("project");
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: "こんにちは。どのようなことをチームに依頼しますか？" },
@@ -157,7 +155,7 @@ export default function ChatPage() {
         body: JSON.stringify({ sessionId }),
       });
       if (!res.ok) throw new Error("承認に失敗しました");
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
     } catch (e) {
       alert(e instanceof Error ? e.message : "エラー");
     } finally {
@@ -167,154 +165,197 @@ export default function ChatPage() {
 
   const skillLabel: Record<string, string> = {
     documentation: "資料作成",
-    communication: "コミュニケーション",
+    communication: "調整",
     technical: "技術",
     ci_cd: "CI/CD",
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header pageTitle="指示入力チャット" backHref="/dashboard" />
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar />
 
-      {/* Mode toggle */}
-      <div className="max-w-4xl mx-auto w-full px-4 pt-4">
-        <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 gap-1">
-          <button
-            onClick={() => handleModeChange("project")}
-            disabled={phase !== "chatting"}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed ${
-              mode === "project"
-                ? "bg-indigo-600 text-white"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            プロジェクト
-          </button>
-          <button
-            onClick={() => handleModeChange("today")}
-            disabled={phase !== "chatting"}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:cursor-not-allowed ${
-              mode === "today"
-                ? "bg-red-500 text-white"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            🔥 今日中
-          </button>
-        </div>
-      </div>
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-xs text-gray-400 font-medium">Software › 指示を入力</p>
+            <h1 className="text-xl font-black text-gray-900 mt-0.5">新しい指示</h1>
+          </div>
 
-      <div className="flex flex-1 max-w-4xl mx-auto w-full px-4 py-4 gap-6">
-        {/* Chat */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+          {/* Mode toggle */}
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1">
+              <button
+                onClick={() => handleModeChange("project")}
+                disabled={phase !== "chatting"}
+                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
+                  mode === "project"
+                    ? "bg-white text-indigo-700 shadow-sm border border-gray-200"
+                    : "text-gray-400 hover:text-gray-600"
+                }`}
               >
+                プロジェクト
+              </button>
+              <button
+                onClick={() => handleModeChange("today")}
+                disabled={phase !== "chatting"}
+                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
+                  mode === "today"
+                    ? "bg-white text-red-600 shadow-sm border border-gray-200"
+                    : "text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                🔥 今日中
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Main content */}
+        <div className="flex flex-1 gap-5 p-6 overflow-hidden min-h-0">
+
+          {/* Chat column */}
+          <div className="flex-1 flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden min-h-0">
+            {/* Chat header */}
+            <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${mode === "today" ? "bg-red-400" : "bg-indigo-400"}`} />
+              <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
+                {mode === "today" ? "緊急タスク入力" : "タスク分解チャット"}
+              </span>
+              {phase === "assigning" && (
+                <span className="ml-auto text-xs text-indigo-500 font-medium animate-pulse">推薦中...</span>
+              )}
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {messages.map((m, i) => (
                 <div
-                  className={`max-w-sm px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                    m.role === "user"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-white border border-gray-200 text-gray-800"
-                  }`}
+                  key={i}
+                  className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {m.content}
+                  {m.role === "assistant" && (
+                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-pink-500 flex items-center justify-center text-white text-xs font-black mr-2.5 shrink-0 mt-0.5 shadow-sm">
+                      AI
+                    </div>
+                  )}
+                  <div
+                    className={`max-w-md px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                      m.role === "user"
+                        ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-sm"
+                        : "bg-gray-50 border border-gray-100 text-gray-800"
+                    }`}
+                  >
+                    {m.content}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl text-sm text-gray-400">
-                  考え中...
+              ))}
+              {loading && phase === "chatting" && (
+                <div className="flex justify-start">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 via-violet-500 to-pink-500 flex items-center justify-center text-white text-xs font-black mr-2.5 shrink-0 shadow-sm">
+                    AI
+                  </div>
+                  <div className="bg-gray-50 border border-gray-100 px-4 py-3 rounded-2xl text-sm text-gray-400">
+                    考え中...
+                  </div>
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+
+            {/* Input */}
+            {phase === "chatting" && (
+              <div className="px-5 py-4 border-t border-gray-100">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    placeholder={mode === "today" ? "緊急の依頼を入力..." : "指示を入力..."}
+                    disabled={loading}
+                    className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/50 focus:border-indigo-300 disabled:opacity-50 bg-gray-50"
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={loading || !input.trim()}
+                    className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
+                  >
+                    送信
+                  </button>
                 </div>
               </div>
             )}
-            <div ref={bottomRef} />
           </div>
 
-          {phase === "chatting" && (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                placeholder="指示を入力..."
-                disabled={loading}
-                className="flex-1 border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-              />
-              <button
-                onClick={sendMessage}
-                disabled={loading || !input.trim()}
-                className="bg-indigo-600 text-white px-5 py-3 rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
-              >
-                送信
-              </button>
+          {/* Assignment panel */}
+          {phase === "assigned" && (
+            <div className="w-80 shrink-0 flex flex-col gap-4">
+              {/* Panel header */}
+              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">AI推薦の割り振り案</span>
+                  {mode === "today" && (
+                    <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">🔥 今日中</span>
+                  )}
+                </div>
+
+                <div className="p-4 space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                  {assignments.map((a, i) => {
+                    const skill = a.task.requiredSkill;
+                    const ranked = [...memberScores]
+                      .sort((x, y) => (y.skills[skill] ?? 0) - (x.skills[skill] ?? 0));
+                    const maxScore = ranked[0]?.skills[skill] ?? 1;
+                    return (
+                      <div key={i} className="bg-gray-50 rounded-xl border border-gray-100 p-3.5">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium">
+                            {skillLabel[skill] ?? skill}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-900 mb-1">{a.task.title}</p>
+                        <p className="text-xs text-gray-400 leading-relaxed mb-2.5">{a.assignment.reason}</p>
+                        {ranked.length > 0 && (
+                          <div className="space-y-1.5">
+                            {ranked.map((m) => {
+                              const s = m.skills[skill] ?? 0;
+                              const isAssigned = m.uid === a.assignment.assigneeUid;
+                              return (
+                                <div key={m.uid} className="flex items-center gap-2">
+                                  <span className={`text-xs w-14 truncate ${isAssigned ? "font-bold text-indigo-600" : "text-gray-400"}`}>
+                                    {isAssigned ? "▶ " : ""}{m.name}
+                                  </span>
+                                  <div className="flex-1 bg-gray-200 rounded-full h-1.5">
+                                    <div
+                                      className={`h-1.5 rounded-full transition-all ${isAssigned ? "bg-gradient-to-r from-indigo-400 to-violet-500" : "bg-gray-300"}`}
+                                      style={{ width: `${(s / Math.max(maxScore, 1)) * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className={`text-xs w-6 text-right ${isAssigned ? "text-indigo-600 font-bold" : "text-gray-400"}`}>{s}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="p-4 border-t border-gray-100">
+                  <button
+                    onClick={handleApprove}
+                    disabled={loading}
+                    className="w-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
+                  >
+                    {loading ? "処理中..." : "一括承認してタスクを割り振る →"}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
-
-        {/* Assignment panel */}
-        {phase === "assigned" && (
-          <div className="w-72 flex-shrink-0">
-            <div className="bg-white rounded-xl border border-gray-200 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="font-semibold text-gray-900">AI推薦の割り振り案</h2>
-                {mode === "today" && (
-                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">今日中</span>
-                )}
-              </div>
-              <div className="space-y-4">
-                {assignments.map((a, i) => {
-                  const skill = a.task.requiredSkill;
-                  const ranked = [...memberScores]
-                    .sort((x, y) => (y.skills[skill] ?? 0) - (x.skills[skill] ?? 0));
-                  const maxScore = ranked[0]?.skills[skill] ?? 1;
-                  return (
-                    <div key={i} className="border border-gray-100 rounded-lg p-3">
-                      <p className="text-xs font-medium text-gray-500 mb-1">
-                        {skillLabel[skill] ?? skill}
-                      </p>
-                      <p className="text-sm font-semibold text-gray-900">{a.task.title}</p>
-                      <p className="text-xs text-gray-400 mt-1">{a.assignment.reason}</p>
-                      {ranked.length > 0 && (
-                        <div className="mt-2 space-y-1">
-                          {ranked.map((m) => {
-                            const s = m.skills[skill] ?? 0;
-                            const isAssigned = m.uid === a.assignment.assigneeUid;
-                            return (
-                              <div key={m.uid} className="flex items-center gap-2">
-                                <span className={`text-xs w-16 truncate ${isAssigned ? "font-bold text-indigo-600" : "text-gray-400"}`}>
-                                  {isAssigned ? "▶ " : ""}{m.name}
-                                </span>
-                                <div className="flex-1 bg-gray-100 rounded-full h-1.5">
-                                  <div
-                                    className={`h-1.5 rounded-full ${isAssigned ? "bg-indigo-500" : "bg-gray-300"}`}
-                                    style={{ width: `${(s / Math.max(maxScore, 1)) * 100}%` }}
-                                  />
-                                </div>
-                                <span className={`text-xs w-6 text-right ${isAssigned ? "text-indigo-600 font-bold" : "text-gray-400"}`}>{s}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <button
-                onClick={handleApprove}
-                disabled={loading}
-                className="w-full mt-5 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
-              >
-                {loading ? "処理中..." : "一括承認してタスクを割り振る"}
-              </button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

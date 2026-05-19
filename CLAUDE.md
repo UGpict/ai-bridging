@@ -324,11 +324,11 @@ service cloud.firestore {
 ### 直前デプロイが壊れた場合
 ```bash
 # リビジョン一覧を確認
-gcloud run revisions list --service ai-bridging --region asia-northeast1
+gcloud run revisions list --service tascall --region asia-northeast1
 
-# 前のリビジョンに100%切り戻し（例: ai-bridging-00004-ndq）
-gcloud run services update-traffic ai-bridging \
-  --to-revisions=ai-bridging-00004-ndq=100 \
+# 前のリビジョンに100%切り戻し（例: tascall-00001-s7t）
+gcloud run services update-traffic tascall \
+  --to-revisions=tascall-00001-s7t=100 \
   --region asia-northeast1
 ```
 切り戻しは **30秒以内**に完了する。
@@ -336,7 +336,7 @@ gcloud run services update-traffic ai-bridging \
 ### デモ直前のデプロイ禁止ライン
 **デモ開始30分前以降は新規デプロイしない。** 動いているリビジョンのURLをブックマークしておくこと。
 
-現行リビジョン: `ai-bridging-00019-4tp`（2026-05-19時点）
+現行リビジョン: `tascall-00001-s7t`（2026-05-19時点）
 
 ---
 
@@ -407,7 +407,7 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=ai-bridging
 - `NEXT_PUBLIC_*` はビルド時にバンドルへ焼き込まれる。`--set-build-env-vars` では **Dockerの `--build-arg` に渡らない**ため、`lib/firebase.ts` に `||` フォールバック値をハードコードしている（Firebase APIキーは公開値なので問題なし）
 - `env.yaml` は `scripts/make_env_yaml.py` で生成する（`GEMINI_API_KEY` は除外、Vertex AIはADC認証のため不要）
 - `env.yaml` は `.gitignore` 対象（秘密鍵を含むため）
-- デプロイコマンド：`gcloud run deploy ai-bridging --source . --region asia-northeast1 --allow-unauthenticated --env-vars-file env.yaml --platform managed --quiet`
+- デプロイコマンド：`gcloud run deploy tascall --source . --region asia-northeast1 --allow-unauthenticated --env-vars-file env.yaml --platform managed --quiet`
 
 ### Cloud Run 固有のハマりポイント（実績あり）
 - **Firestore `settings()` 二重呼び出しエラー**: 並列ワーカーが同一Firestoreインスタンスに`settings()`を複数回呼ぶ。`lib/firebaseAdmin.ts`でtry-catchしているため現在は対処済み
@@ -453,7 +453,7 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=ai-bridging
 - [x] メンバー追加UI（ダッシュボードのモーダル・スキルスライダー・初期値50）
 - [x] メンバー削除UI（DeleteMemberButton + DELETE /api/members/[uid]）
 - [x] バッジビジュアル・レベルアップ演出
-- [x] Cloud Runデプロイ（`https://ai-bridging-649847191589.asia-northeast1.run.app`）
+- [x] Cloud Runデプロイ（`https://tascall-649847191589.asia-northeast1.run.app`）
 - [x] APIルートの認可チェック（セッション所有者・担当者確認・org分離）
 - [x] Firestore複合インデックス（`firestore.indexes.json`、デプロイ済み）
 - [x] Firestoreクエリ順序修正（`where`→`orderBy`の順）

@@ -336,7 +336,7 @@ gcloud run services update-traffic ai-bridging \
 ### デモ直前のデプロイ禁止ライン
 **デモ開始30分前以降は新規デプロイしない。** 動いているリビジョンのURLをブックマークしておくこと。
 
-現行リビジョン: `ai-bridging-00014-m8v`（2026-05-18時点）
+現行リビジョン: `ai-bridging-00019-4tp`（2026-05-19時点）
 
 ---
 
@@ -409,6 +409,12 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=ai-bridging
 - `env.yaml` は `.gitignore` 対象（秘密鍵を含むため）
 - デプロイコマンド：`gcloud run deploy ai-bridging --source . --region asia-northeast1 --allow-unauthenticated --env-vars-file env.yaml --platform managed --quiet`
 
+### Cloud Run 固有のハマりポイント（実績あり）
+- **Firestore `settings()` 二重呼び出しエラー**: 並列ワーカーが同一Firestoreインスタンスに`settings()`を複数回呼ぶ。`lib/firebaseAdmin.ts`でtry-catchしているため現在は対処済み
+- **`next/image` でwebpが読めない**: AlpineベースのDockerイメージに`sharp`がないため画像最適化が失敗する。`public/`配下の静的画像は`<img>`タグを使うこと（`next/image`は使わない）
+- **ログイン後のCookieタイミング**: `router.push()`はNext.jsクライアントルーティングのためCookieが乗る前にページが描画される場合がある。ログイン後のリダイレクトは`window.location.href`を使うこと
+- **Googleログイン `signInWithRedirect`**: `firebaseapp.com`経由のOAuthリダイレクトをGoogleがポリシー違反として弾く。`signInWithPopup`を使い、popup-blockedエラー時はメール/パスワードへ誘導する
+
 ---
 
 ## デモシナリオ（実装の優先度判断に使うこと）
@@ -458,3 +464,6 @@ NEXT_PUBLIC_FIREBASE_PROJECT_ID=ai-bridging
 - [x] セッション（sessions）にorgIdを付与・型定義に追加
 - [x] lint warnings 全解消（未使用import・catch変数・未使用state）
 - [x] Cloud Runデプロイ（最新版、メール認証・メンバー削除含む）
+- [x] UIリニューアル（Geminiグラデーション・紙吹雪・2カラムログイン・TascaLLロゴ）
+- [x] モバイルログイン修正（`router.push` → `window.location.href` でCookieタイミング問題解消）
+- [x] Cloud RunクラッシュFix（Firestore `settings()`二重呼び出し・`next/image`→`<img>`）

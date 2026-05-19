@@ -27,7 +27,11 @@ function getApp(): App {
 function getFirestoreInstance(): Firestore {
   if (firestoreInstance) return firestoreInstance;
   firestoreInstance = getFirestore(getApp());
-  firestoreInstance.settings({ ignoreUndefinedProperties: true });
+  try {
+    firestoreInstance.settings({ ignoreUndefinedProperties: true });
+  } catch {
+    // Already initialized by another worker, safe to ignore
+  }
   return firestoreInstance;
 }
 

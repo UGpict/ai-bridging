@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { getFirebaseAuth } from "@/lib/firebase";
 import {
   GoogleAuthProvider,
@@ -87,14 +86,12 @@ export default function LoginPage() {
       <div className="hidden lg:flex flex-1 flex-col items-center justify-center bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 relative overflow-hidden p-12">
         <div className="absolute inset-0 bg-black/10" />
         <div className="relative z-10 w-full max-w-md">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/logo.webp"
             alt="TascaLL"
-            width={480}
-            height={320}
             className="rounded-2xl shadow-2xl w-full object-cover object-center"
             style={{ maxHeight: 320 }}
-            priority
           />
           <div className="mt-8 text-white">
             <h2 className="text-3xl font-black tracking-tight">TascaLL</h2>

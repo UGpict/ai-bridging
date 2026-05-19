@@ -1,11 +1,19 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { ScoringWeights, EvaluationHistoryEntry } from "@/types";
+import type { ScoringWeights } from "@/types";
+
+// Firestoreの Timestamp クラスを含まないシリアライズ可能な型
+interface HistoryEntry {
+  taskId: string;
+  aiScore: number;
+  managerScore: number;
+  aiBreakdown: { requirement: number; clarity: number; completeness: number };
+}
 
 interface Props {
   weights: ScoringWeights;
-  history: EvaluationHistoryEntry[];
+  history: HistoryEntry[];
 }
 
 const ITEMS = [

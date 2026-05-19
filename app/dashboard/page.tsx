@@ -126,7 +126,15 @@ export default async function DashboardPage() {
     clarity: 1.0,
     completeness: 1.0,
   };
-  const history: EvaluationHistoryEntry[] = (org?.evaluationHistory ?? []) as EvaluationHistoryEntry[];
+  // Firestoreの Timestamp クラスインスタンスを除いたシリアライズ可能な形に変換
+  const history = ((org?.evaluationHistory ?? []) as EvaluationHistoryEntry[]).map(
+    ({ taskId, aiScore, managerScore, aiBreakdown }) => ({
+      taskId,
+      aiScore,
+      managerScore,
+      aiBreakdown,
+    })
+  );
 
   return (
     <div className="flex min-h-screen bg-gray-50">

@@ -9,10 +9,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
-import { useRouter } from "next/navigation";
-
 export default function LoginPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [email, setEmail] = useState("");
@@ -20,9 +17,9 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(false);
 
   const redirectByRole = (role: string) => {
-    if (role === "new") router.push("/onboarding");
-    else if (role === "manager") router.push("/dashboard");
-    else router.push("/tasks");
+    if (role === "new") window.location.href = "/onboarding";
+    else if (role === "manager") window.location.href = "/dashboard";
+    else window.location.href = "/tasks";
   };
 
   const postSession = async (idToken: string) => {

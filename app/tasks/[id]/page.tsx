@@ -67,10 +67,32 @@ export default function TaskDetailPage() {
         body: JSON.stringify({ taskId: id }),
       });
       if (!evalRes.ok) throw new Error("評価に失敗しました");
-      const evalData = (await evalRes.json()) as Task["evaluation"];
-      setTask((prev) => (prev ? { ...prev, status: "evaluated", evaluation: evalData } : prev));
+      const evalData = (await evalRes.json()) as {
+        aiScore: number;
+        aiFeedback: string;
+        finalScore: number;
+        delta: number;
+        level: string;
+      };
 
-      if (prevLevel && evalData && evalData.level !== prevLevel) {
+      setTask((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: "ai_evaluated",
+              evaluation: {
+                aiBreakdown: { requirement: 0, clarity: 0, completeness: 0 },
+                aiScore: evalData.aiScore,
+                aiFeedback: evalData.aiFeedback,
+                finalScore: evalData.finalScore,
+                delta: evalData.delta,
+                level: evalData.level,
+              },
+            }
+          : prev
+      );
+
+      if (prevLevel && evalData.level !== prevLevel) {
         setLevelUpData({
           from: prevLevel,
           to: evalData.level as BadgeLevel,
@@ -101,7 +123,8 @@ export default function TaskDetailPage() {
     );
   }
 
-  const isEvaluated = task.status === "evaluated";
+  const isDone = task.status === "ai_evaluated" || task.status === "evaluated";
+  const showFeedback = isDone && task.evaluation;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -128,50 +151,41 @@ export default function TaskDetailPage() {
           <p className="text-sm text-gray-500 mt-2 leading-relaxed">{task.description}</p>
         </div>
 
-        {/* Evaluation result */}
-        {isEvaluated && task.evaluation && (
+        {/* Evaluation feedback (after AI evaluation) */}
+        {showFeedback && (
           <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border border-indigo-200 p-6">
-            <h3 className="font-semibold text-indigo-900 mb-4">AI評価結果</h3>
-            <div className="flex items-center gap-6 mb-4">
-              <div className="text-center">
-                <p className="text-4xl font-bold text-indigo-600">{task.evaluation.score}</p>
-                <p className="text-xs text-indigo-400">/ 100点</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  スコア変動:{" "}
-                  <span className={task.evaluation.delta >= 0 ? "text-green-600" : "text-red-600"}>
-                    {task.evaluation.delta >= 0 ? "+" : ""}
-                    {task.evaluation.delta}pt
-                  </span>
-                </p>
-                <p className="text-sm font-medium text-gray-600">
-                  バッジレベル:{" "}
-                  <span className="text-indigo-600 font-semibold">{task.evaluation.level}</span>
+            <h3 className="font-semibold text-indigo-900 mb-3">フィードバック</h3>
+
+            {task.status === "ai_evaluated" ? (
+              <div className="flex items-center gap-3 mb-4 bg-violet-50 border border-violet-200 rounded-lg px-4 py-3">
+                <span className="text-lg">⏳</span>
+                <p className="text-sm text-violet-700 font-medium">
+                  上司のレビュー待ちです。確定スコアは評価後に反映されます。
                 </p>
               </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3 mb-4">
-              {(
-                [
-                  { key: "requirement", label: "要件充足", max: 40 },
-                  { key: "clarity", label: "明確性", max: 30 },
-                  { key: "completeness", label: "完結性", max: 30 },
-                ] as const
-              ).map((item) => (
-                <div
-                  key={item.key}
-                  className="bg-white rounded-lg p-3 text-center border border-indigo-100"
-                >
-                  <p className="text-lg font-bold text-gray-900">
-                    {task.evaluation!.breakdown[item.key]}
-                    <span className="text-xs text-gray-400">/{item.max}</span>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">{item.label}</p>
+            ) : (
+              <div className="flex items-center gap-6 mb-4">
+                <div className="text-center">
+                  <p className="text-4xl font-bold text-indigo-600">{task.evaluation!.finalScore}</p>
+                  <p className="text-xs text-indigo-400">/ 100点</p>
                 </div>
-              ))}
-            </div>
-            <p className="text-sm text-gray-700 leading-relaxed">{task.evaluation.feedback}</p>
+                <div>
+                  <p className="text-sm font-medium text-gray-600">
+                    スコア変動:{" "}
+                    <span className={task.evaluation!.delta >= 0 ? "text-green-600" : "text-red-600"}>
+                      {task.evaluation!.delta >= 0 ? "+" : ""}
+                      {task.evaluation!.delta}pt
+                    </span>
+                  </p>
+                  <p className="text-sm font-medium text-gray-600">
+                    バッジレベル:{" "}
+                    <span className="text-indigo-600 font-semibold">{task.evaluation!.level}</span>
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <p className="text-sm text-gray-700 leading-relaxed">{task.evaluation!.aiFeedback}</p>
           </div>
         )}
 
@@ -187,7 +201,7 @@ export default function TaskDetailPage() {
             <label className="block text-xs font-medium text-gray-500 mb-1">
               GitHub PR / Issue URL（任意）
             </label>
-            {isEvaluated && task.prUrl ? (
+            {isDone && task.prUrl ? (
               <a
                 href={task.prUrl}
                 target="_blank"
@@ -201,7 +215,7 @@ export default function TaskDetailPage() {
                 type="url"
                 value={prUrl}
                 onChange={(e) => setPrUrl(e.target.value)}
-                disabled={isEvaluated || submitting || evaluating}
+                disabled={isDone || submitting || evaluating}
                 placeholder="https://github.com/org/repo/pull/123"
                 className="w-full border border-gray-300 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-50 disabled:text-gray-400"
               />
@@ -210,12 +224,12 @@ export default function TaskDetailPage() {
           <textarea
             value={submission}
             onChange={(e) => setSubmission(e.target.value)}
-            disabled={isEvaluated || submitting || evaluating}
+            disabled={isDone || submitting || evaluating}
             placeholder="成果物の内容をここに記入してください..."
             rows={8}
             className="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none disabled:bg-gray-50 disabled:text-gray-400"
           />
-          {!isEvaluated && (
+          {!isDone && (
             <button
               onClick={handleSubmit}
               disabled={!submission.trim() || submitting || evaluating}

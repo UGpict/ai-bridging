@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { ClarifiedTask, Assignment } from "@/types";
+import { motion, AnimatePresence } from "framer-motion";
+import type { ClarifiedTask, TaskCandidates, SelectedAssignment } from "@/types";
 import Sidebar from "@/app/components/Sidebar";
+import CandidateCards from "@/app/components/CandidateCards";
 
 type MessageRole = "user" | "assistant";
 interface ChatMessage {
@@ -13,17 +15,6 @@ interface ChatMessage {
 type Phase = "chatting" | "assigning" | "assigned";
 type Mode = "project" | "today";
 
-interface MemberScore {
-  uid: string;
-  name: string;
-  skills: Record<string, number>;
-}
-
-interface AssignResult {
-  task: ClarifiedTask;
-  assignment: Assignment;
-}
-
 export default function ChatPage() {
   const [mode, setMode] = useState<Mode>("project");
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -32,8 +23,8 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState<string | undefined>();
   const [phase, setPhase] = useState<Phase>("chatting");
-  const [assignments, setAssignments] = useState<AssignResult[]>([]);
-  const [memberScores, setMemberScores] = useState<MemberScore[]>([]);
+  const [proposals, setProposals] = useState<TaskCandidates[]>([]);
+  const [selections, setSelections] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -50,8 +41,8 @@ export default function ChatPage() {
     ]);
     setSessionId(undefined);
     setPhase("chatting");
-    setAssignments([]);
-    setMemberScores([]);
+    setProposals([]);
+    setSelections({});
   };
 
   useEffect(() => {
@@ -92,7 +83,7 @@ export default function ChatPage() {
           },
         ]);
         setPhase("assigning");
-        await assignTasks(data.sessionId, data.tasks);
+        await fetchCandidates(data.sessionId, data.tasks);
       } else {
         setMessages((prev) => [
           ...prev,
@@ -112,7 +103,7 @@ export default function ChatPage() {
     }
   };
 
-  const assignTasks = async (sid: string, taskList: ClarifiedTask[]) => {
+  const fetchCandidates = async (sid: string, taskList: ClarifiedTask[]) => {
     try {
       const res = await fetch("/api/assign", {
         method: "POST",
@@ -120,18 +111,12 @@ export default function ChatPage() {
         body: JSON.stringify({ sessionId: sid, tasks: taskList }),
       });
       const data = (await res.json()) as {
-        assignments?: Assignment[];
-        memberScores?: MemberScore[];
+        candidateProposals?: TaskCandidates[];
         error?: string;
       };
       if (!res.ok) throw new Error(data.error ?? "推薦に失敗しました");
 
-      const results: AssignResult[] = taskList.map((task, i) => ({
-        task,
-        assignment: data.assignments![i] ?? data.assignments![0],
-      }));
-      setAssignments(results);
-      setMemberScores(data.memberScores ?? []);
+      setProposals(data.candidateProposals ?? []);
       setPhase("assigned");
     } catch (e) {
       setMessages((prev) => [
@@ -145,14 +130,31 @@ export default function ChatPage() {
     }
   };
 
+  const handleSelect = (taskIndex: number, uid: string) => {
+    setSelections((prev) => ({ ...prev, [taskIndex]: uid }));
+  };
+
+  const allSelected = proposals.length > 0 && proposals.every((p) => selections[p.taskIndex]);
+
   const handleApprove = async () => {
-    if (!sessionId) return;
+    if (!sessionId || !allSelected) return;
     setLoading(true);
     try {
+      const selectedAssignments: SelectedAssignment[] = proposals.map((p) => {
+        const selectedUid = selections[p.taskIndex];
+        const candidate = p.candidates.find((c) => c.uid === selectedUid)!;
+        return {
+          taskIndex: p.taskIndex,
+          assigneeUid: candidate.uid,
+          assigneeName: candidate.name,
+          candidateType: candidate.type,
+        };
+      });
+
       const res = await fetch("/api/assign", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
+        body: JSON.stringify({ sessionId, selectedAssignments }),
       });
       if (!res.ok) throw new Error("承認に失敗しました");
       window.location.href = "/dashboard";
@@ -161,13 +163,6 @@ export default function ChatPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const skillLabel: Record<string, string> = {
-    documentation: "資料作成",
-    communication: "調整",
-    technical: "技術",
-    ci_cd: "CI/CD",
   };
 
   return (
@@ -183,31 +178,29 @@ export default function ChatPage() {
           </div>
 
           {/* Mode toggle */}
-          <div className="flex items-center gap-2">
-            <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1">
-              <button
-                onClick={() => handleModeChange("project")}
-                disabled={phase !== "chatting"}
-                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
-                  mode === "project"
-                    ? "bg-white text-indigo-700 shadow-sm border border-gray-200"
-                    : "text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                プロジェクト
-              </button>
-              <button
-                onClick={() => handleModeChange("today")}
-                disabled={phase !== "chatting"}
-                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
-                  mode === "today"
-                    ? "bg-white text-red-600 shadow-sm border border-gray-200"
-                    : "text-gray-400 hover:text-gray-600"
-                }`}
-              >
-                🔥 今日中
-              </button>
-            </div>
+          <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1 gap-1">
+            <button
+              onClick={() => handleModeChange("project")}
+              disabled={phase !== "chatting"}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
+                mode === "project"
+                  ? "bg-white text-indigo-700 shadow-sm border border-gray-200"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              プロジェクト
+            </button>
+            <button
+              onClick={() => handleModeChange("today")}
+              disabled={phase !== "chatting"}
+              className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed ${
+                mode === "today"
+                  ? "bg-white text-red-600 shadow-sm border border-gray-200"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              🔥 今日中
+            </button>
           </div>
         </header>
 
@@ -215,8 +208,7 @@ export default function ChatPage() {
         <div className="flex flex-1 gap-5 p-6 overflow-hidden min-h-0">
 
           {/* Chat column */}
-          <div className="flex-1 flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden min-h-0">
-            {/* Chat header */}
+          <div className={`flex flex-col bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden min-h-0 transition-all duration-300 ${phase === "assigned" ? "w-72 shrink-0" : "flex-1"}`}>
             <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${mode === "today" ? "bg-red-400" : "bg-indigo-400"}`} />
               <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">
@@ -227,7 +219,6 @@ export default function ChatPage() {
               )}
             </div>
 
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
               {messages.map((m, i) => (
                 <div
@@ -240,7 +231,7 @@ export default function ChatPage() {
                     </div>
                   )}
                   <div
-                    className={`max-w-md px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                    className={`max-w-xs px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                       m.role === "user"
                         ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-sm"
                         : "bg-gray-50 border border-gray-100 text-gray-800"
@@ -263,7 +254,6 @@ export default function ChatPage() {
               <div ref={bottomRef} />
             </div>
 
-            {/* Input */}
             {phase === "chatting" && (
               <div className="px-5 py-4 border-t border-gray-100">
                 <div className="flex gap-2">
@@ -288,73 +278,49 @@ export default function ChatPage() {
             )}
           </div>
 
-          {/* Assignment panel */}
-          {phase === "assigned" && (
-            <div className="w-80 shrink-0 flex flex-col gap-4">
-              {/* Panel header */}
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span className="text-xs font-bold text-gray-600 uppercase tracking-wide">AI推薦の割り振り案</span>
-                  {mode === "today" && (
-                    <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">🔥 今日中</span>
-                  )}
+          {/* Candidate cards panel */}
+          <AnimatePresence>
+            {phase === "assigned" && proposals.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, x: 32 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 32 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="flex-1 flex flex-col overflow-hidden min-h-0"
+              >
+                {/* Panel header */}
+                <div className="flex items-center justify-between mb-4 shrink-0">
+                  <div>
+                    <h2 className="text-sm font-black text-gray-800">担当者を選んでください</h2>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      各タスクについて3つの推薦から1人を選択
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400">
+                      {Object.keys(selections).length}/{proposals.length} 選択済み
+                    </span>
+                    <button
+                      onClick={handleApprove}
+                      disabled={!allSelected || loading}
+                      className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 shadow-sm"
+                    >
+                      {loading ? "処理中..." : "割り振りを確定 →"}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="p-4 space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
-                  {assignments.map((a, i) => {
-                    const skill = a.task.requiredSkill;
-                    const ranked = [...memberScores]
-                      .sort((x, y) => (y.skills[skill] ?? 0) - (x.skills[skill] ?? 0));
-                    const maxScore = ranked[0]?.skills[skill] ?? 1;
-                    return (
-                      <div key={i} className="bg-gray-50 rounded-xl border border-gray-100 p-3.5">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-medium">
-                            {skillLabel[skill] ?? skill}
-                          </span>
-                        </div>
-                        <p className="text-sm font-semibold text-gray-900 mb-1">{a.task.title}</p>
-                        <p className="text-xs text-gray-400 leading-relaxed mb-2.5">{a.assignment.reason}</p>
-                        {ranked.length > 0 && (
-                          <div className="space-y-1.5">
-                            {ranked.map((m) => {
-                              const s = m.skills[skill] ?? 0;
-                              const isAssigned = m.uid === a.assignment.assigneeUid;
-                              return (
-                                <div key={m.uid} className="flex items-center gap-2">
-                                  <span className={`text-xs w-14 truncate ${isAssigned ? "font-bold text-indigo-600" : "text-gray-400"}`}>
-                                    {isAssigned ? "▶ " : ""}{m.name}
-                                  </span>
-                                  <div className="flex-1 bg-gray-200 rounded-full h-1.5">
-                                    <div
-                                      className={`h-1.5 rounded-full transition-all ${isAssigned ? "bg-gradient-to-r from-indigo-400 to-violet-500" : "bg-gray-300"}`}
-                                      style={{ width: `${(s / Math.max(maxScore, 1)) * 100}%` }}
-                                    />
-                                  </div>
-                                  <span className={`text-xs w-6 text-right ${isAssigned ? "text-indigo-600 font-bold" : "text-gray-400"}`}>{s}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
+                {/* Scrollable card area */}
+                <div className="flex-1 overflow-y-auto">
+                  <CandidateCards
+                    proposals={proposals}
+                    selections={selections}
+                    onSelect={handleSelect}
+                  />
                 </div>
-
-                <div className="p-4 border-t border-gray-100">
-                  <button
-                    onClick={handleApprove}
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-indigo-500 to-violet-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
-                  >
-                    {loading ? "処理中..." : "一括承認してタスクを割り振る →"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

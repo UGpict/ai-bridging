@@ -11,6 +11,7 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     pending: { label: "進行中", cls: "bg-blue-100 text-blue-700" },
     submitted: { label: "提出済", cls: "bg-yellow-100 text-yellow-700" },
+    ai_evaluated: { label: "レビュー待ち", cls: "bg-violet-100 text-violet-700" },
     evaluated: { label: "評価済", cls: "bg-green-100 text-green-700" },
   };
   const s = map[status] ?? { label: status, cls: "bg-gray-100 text-gray-600" };
@@ -113,16 +114,16 @@ export default async function TasksPage() {
                   </div>
                   <StatusBadge status={task.status} />
                 </div>
-                {task.evaluation && (
+                {task.evaluation && task.status === "evaluated" && (
                   <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-3">
                     <span className="text-sm font-bold text-indigo-600">
-                      {task.evaluation.score}点
+                      {task.evaluation.finalScore}点
                     </span>
                     <span className="text-xs text-green-600">
                       +{task.evaluation.delta}pt
                     </span>
                     <span className="text-xs text-gray-400 line-clamp-1 flex-1">
-                      {task.evaluation.feedback}
+                      {task.evaluation.aiFeedback}
                     </span>
                   </div>
                 )}

@@ -1,8 +1,14 @@
 import { adminAuth } from "@/lib/firebaseAdmin";
-import { getTask, evaluateTask, getUser, updateUserBadge } from "@/lib/firestore";
+import { getTask, aiEvaluateTask, getUser, getOrganizationByManager } from "@/lib/firestore";
 import { generateContent } from "@/lib/gemini";
-import type { EvaluationResponse, RequiredSkill } from "@/types";
+import type { RequiredSkill, ScoringWeights, TaskEvaluation } from "@/types";
 import { cookies } from "next/headers";
+
+const DEFAULT_WEIGHTS: ScoringWeights = {
+  requirement: 1.0,
+  clarity: 1.0,
+  completeness: 1.0,
+};
 
 function calcBadgeLevel(score: number): string {
   if (score >= 800) return "エキスパート";
@@ -38,12 +44,27 @@ export async function POST(request: Request) {
     if (task.assigneeUid !== decoded.uid) {
       return Response.json({ error: "権限がありません" }, { status: 403 });
     }
-    if (task.status === "evaluated") {
+    if (task.status === "ai_evaluated" || task.status === "evaluated") {
       return Response.json({ error: "既に評価済みです" }, { status: 409 });
     }
     if (task.status !== "submitted") {
       return Response.json({ error: "提出されていないタスクは評価できません" }, { status: 400 });
     }
+
+    // 上司の採点重みを取得（managerUidはtask.orgId === org.idのmanagerUidから引く）
+    // orgIdとmanagerUidは同値の設計なのでorgIdで直引き
+    const org = task.orgId
+      ? await getOrganizationByManager(task.orgId)
+      : null;
+    const weights: ScoringWeights = org?.scoringWeights ?? DEFAULT_WEIGHTS;
+
+    const weightNote =
+      weights.requirement !== 1.0 || weights.clarity !== 1.0 || weights.completeness !== 1.0
+        ? `\n\n【採点傾向の補正】この組織の過去の採点傾向に基づき以下の重みで採点してください：
+- タスク要件充足度: ${weights.requirement.toFixed(2)}倍（重み調整済み）
+- 明確性: ${weights.clarity.toFixed(2)}倍（重み調整済み）
+- 完結性: ${weights.completeness.toFixed(2)}倍（重み調整済み）`
+        : "";
 
     const prompt = `以下のタスクの要件と、部下が提出したテキストを照合し、採点してください。
 
@@ -59,48 +80,53 @@ ${task.submission}
 【採点ルーブリック（合計100点）】
 - タスク要件充足度: 0-40点（要件への言及・具体性）
 - 明確性: 0-30点（文章の明確さ・曖昧さのなさ）
-- 完結性: 0-30点（結論の明示・次のアクションの明確さ）
+- 完結性: 0-30点（結論の明示・次のアクションの明確さ）${weightNote}
 
 必ずJSONのみで返す（マークダウン不要）:
 {"breakdown":{"requirement":数値,"clarity":数値,"completeness":数値},"score":合計数値,"feedback":"丁寧語でのフィードバック（良かった点と改善点を含む）"}`;
 
     const rawResponse = await generateContent(prompt);
     const clean = rawResponse.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean) as Omit<EvaluationResponse, "delta" | "level">;
-
-    // breakdown の合計と score の乖離を自動補正
-    parsed.score = parsed.breakdown.requirement + parsed.breakdown.clarity + parsed.breakdown.completeness;
-
-    const delta = calcDelta(parsed.score);
-    const user = await getUser(task.assigneeUid);
-    const newScore = Math.max(0, (user?.badgeScore ?? 0) + delta);
-    const newLevel = calcBadgeLevel(newScore);
-
-    const evaluation: EvaluationResponse = {
-      ...parsed,
-      delta,
-      level: newLevel,
+    const parsed = JSON.parse(clean) as {
+      breakdown: { requirement: number; clarity: number; completeness: number };
+      score: number;
+      feedback: string;
     };
 
-    await evaluateTask(taskId, evaluation);
+    // breakdown の合計と score の乖離を補正
+    parsed.score =
+      parsed.breakdown.requirement +
+      parsed.breakdown.clarity +
+      parsed.breakdown.completeness;
 
-    const skillField: RequiredSkill =
-      task.requiredSkill ??
-      (task.description.includes("ci_cd") || task.description.toLowerCase().includes("ci/cd") || task.description.includes("デプロイ") || task.description.includes("パイプライン")
-        ? "ci_cd"
-        : task.description.includes("documentation") || task.description.includes("資料") || task.description.includes("ドキュメント")
-        ? "documentation"
-        : task.description.includes("communication") || task.description.includes("調整") || task.description.includes("連絡")
-        ? "communication"
-        : "technical");
+    const user = await getUser(task.assigneeUid);
+    const currentScore = user?.badgeScore ?? 0;
+    const delta = calcDelta(parsed.score);
+    const projectedScore = Math.max(0, currentScore + delta);
+    const projectedLevel = calcBadgeLevel(projectedScore);
 
-    await updateUserBadge(task.assigneeUid, newScore, newLevel, skillField, Math.max(0, delta));
+    const evaluation: TaskEvaluation = {
+      aiBreakdown: parsed.breakdown,
+      aiScore: parsed.score,
+      aiFeedback: parsed.feedback,
+      finalScore: parsed.score, // 上司評価が入るまでは aiScore
+      delta,
+      level: projectedLevel,
+    };
 
-    return Response.json(evaluation);
+    await aiEvaluateTask(taskId, evaluation);
+
+    // 部下に返すレスポンス（aiBreakdownは含めない）
+    return Response.json({
+      aiScore: parsed.score,
+      aiFeedback: parsed.feedback,
+      finalScore: parsed.score,
+      delta,
+      level: projectedLevel,
+    });
   } catch {
-    return Response.json(
-      { error: "エラーが発生しました" },
-      { status: 500 }
-    );
+    return Response.json({ error: "エラーが発生しました" }, { status: 500 });
   }
 }
+
+export type { RequiredSkill };

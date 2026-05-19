@@ -2,11 +2,12 @@ import { adminAuth } from "@/lib/firebaseAdmin";
 import { getUser, getAllTasks, getAllMembers, getOrganizationByManager } from "@/lib/firestore";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { Task, User } from "@/types";
+import type { Task, User, ScoringWeights, EvaluationHistoryEntry } from "@/types";
 import AddMemberButton from "./AddMemberButton";
 import DeleteMemberButton from "./DeleteMemberButton";
 import InviteCodeCard from "./InviteCodeCard";
 import Sidebar from "@/app/components/Sidebar";
+import ScoringWeightsChart from "@/app/components/ScoringWeightsChart";
 import Link from "next/link";
 
 function BadgeBadge({ level }: { level: string }) {
@@ -40,8 +41,15 @@ const COLUMNS = [
     badge: "bg-amber-50 text-amber-700",
   },
   {
+    key: "ai_evaluated" as const,
+    label: "レビュー待ち",
+    accent: "border-violet-400",
+    dot: "bg-violet-400",
+    badge: "bg-violet-50 text-violet-700",
+  },
+  {
     key: "evaluated" as const,
-    label: "評価済",
+    label: "確定済",
     accent: "border-emerald-400",
     dot: "bg-emerald-400",
     badge: "bg-emerald-50 text-emerald-700",
@@ -49,8 +57,9 @@ const COLUMNS = [
 ] as const;
 
 function KanbanCard({ task, col }: { task: Task; col: typeof COLUMNS[number] }) {
-  return (
-    <div className={`bg-white rounded-xl border border-gray-100 border-l-4 ${col.accent} p-4 shadow-sm hover:shadow-md transition-shadow`}>
+  const isReviewable = task.status === "ai_evaluated";
+  const cardContent = (
+    <div className={`bg-white rounded-xl border border-gray-100 border-l-4 ${col.accent} p-4 shadow-sm hover:shadow-md transition-shadow ${isReviewable ? "cursor-pointer hover:border-l-violet-500" : ""}`}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-1.5 flex-wrap">
           {task.deadline === "today" && (
@@ -58,16 +67,28 @@ function KanbanCard({ task, col }: { task: Task; col: typeof COLUMNS[number] }) 
           )}
           <p className="text-sm font-semibold text-gray-900 leading-snug">{task.title}</p>
         </div>
+        {isReviewable && (
+          <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 font-bold">評価待</span>
+        )}
       </div>
       <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed mb-3">{task.description}</p>
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500 font-medium">{task.assigneeName}</span>
         {task.evaluation && (
-          <span className="text-xs font-bold text-indigo-600">{task.evaluation.score}点</span>
+          <span className="text-xs font-bold text-indigo-600">{task.evaluation.finalScore}点</span>
         )}
       </div>
     </div>
   );
+
+  if (isReviewable) {
+    return (
+      <Link href={`/dashboard/tasks/${task.id}`}>
+        {cardContent}
+      </Link>
+    );
+  }
+  return cardContent;
 }
 
 export default async function DashboardPage() {
@@ -96,8 +117,16 @@ export default async function DashboardPage() {
     total: tasks.length,
     pending: tasks.filter((t) => t.status === "pending").length,
     submitted: tasks.filter((t) => t.status === "submitted").length,
+    aiEvaluated: tasks.filter((t) => t.status === "ai_evaluated").length,
     evaluated: tasks.filter((t) => t.status === "evaluated").length,
   };
+
+  const weights: ScoringWeights = org?.scoringWeights ?? {
+    requirement: 1.0,
+    clarity: 1.0,
+    completeness: 1.0,
+  };
+  const history: EvaluationHistoryEntry[] = (org?.evaluationHistory ?? []) as EvaluationHistoryEntry[];
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -127,12 +156,13 @@ export default async function DashboardPage() {
           {org && <InviteCodeCard code={org.inviteCode} teamName={org.name} />}
 
           {/* Stats */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-5 gap-4">
             {[
-              { label: "総タスク",  value: stats.total,     gradient: "from-gray-700 to-gray-900",         bg: "bg-gray-50"    },
-              { label: "進行中",    value: stats.pending,   gradient: "from-indigo-500 to-violet-600",     bg: "bg-indigo-50"  },
-              { label: "提出済",    value: stats.submitted, gradient: "from-amber-500 to-orange-500",      bg: "bg-amber-50"   },
-              { label: "評価済",    value: stats.evaluated, gradient: "from-emerald-500 to-green-600",     bg: "bg-emerald-50" },
+              { label: "総タスク",       value: stats.total,       gradient: "from-gray-700 to-gray-900",     bg: "bg-gray-50"     },
+              { label: "進行中",         value: stats.pending,     gradient: "from-indigo-500 to-violet-600", bg: "bg-indigo-50"   },
+              { label: "提出済",         value: stats.submitted,   gradient: "from-amber-500 to-orange-500",  bg: "bg-amber-50"    },
+              { label: "レビュー待ち",   value: stats.aiEvaluated, gradient: "from-violet-500 to-purple-600", bg: "bg-violet-50"   },
+              { label: "確定済",         value: stats.evaluated,   gradient: "from-emerald-500 to-green-600", bg: "bg-emerald-50"  },
             ].map((s) => (
               <div key={s.label} className={`${s.bg} rounded-xl border border-gray-100 p-5 shadow-sm`}>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{s.label}</p>
@@ -140,6 +170,9 @@ export default async function DashboardPage() {
               </div>
             ))}
           </div>
+
+          {/* Scoring weights */}
+          <ScoringWeightsChart weights={weights} history={history} />
 
           {/* Members */}
           <section>
@@ -197,12 +230,11 @@ export default async function DashboardPage() {
               <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">タスクボード</h2>
               <span className="text-xs text-gray-400">Kanban</span>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-4 gap-4">
               {COLUMNS.map((col) => {
                 const colTasks = tasks.filter((t) => t.status === col.key);
                 return (
                   <div key={col.key} className="flex flex-col gap-3">
-                    {/* Column header */}
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${col.dot}`} />
                       <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{col.label}</span>
@@ -210,7 +242,6 @@ export default async function DashboardPage() {
                         {colTasks.length}
                       </span>
                     </div>
-                    {/* Cards */}
                     <div className="space-y-3 min-h-24">
                       {colTasks.length === 0 ? (
                         <div className="bg-white border border-dashed border-gray-200 rounded-xl p-4 text-center">

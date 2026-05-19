@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Confetti from "react-confetti";
 import type { BadgeLevel } from "@/types";
 
@@ -33,11 +33,10 @@ interface Props {
 export default function LevelUpModal({ from, to, delta, onClose }: Props) {
   const toC = BADGE[to];
   const fromC = BADGE[from];
-  const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-  }, []);
+  const [windowSize] = useState(() => ({
+    width: typeof window !== "undefined" ? window.innerWidth : 0,
+    height: typeof window !== "undefined" ? window.innerHeight : 0,
+  }));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
